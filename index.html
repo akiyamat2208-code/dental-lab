@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="技工管理">
+<title>技工物 納品管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F4F0;
+  --surface: #FFFFFF;
+  --surface2: #F0EFE9;
+  --border: #E2E0D8;
+  --border2: #CCCAC0;
+  --text: #1A1917;
+  --text2: #6B6860;
+  --text3: #9C9A93;
+  --accent: #2D5016;
+  --accent-bg: #EBF2E4;
+  --accent-text: #2D5016;
+  --danger: #8B1A1A;
+  --danger-bg: #FBE9E9;
+  --danger-text: #8B1A1A;
+  --warn: #7A4F00;
+  --warn-bg: #FEF3DC;
+  --warn-text: #7A4F00;
+  --info: #1A3A6B;
+  --info-bg: #E8EEF8;
+  --info-text: #1A3A6B;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --font: 'Noto Sans JP', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Layout */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+.topbar-left h1 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.topbar-left .date-label {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 1px;
+}
+
+.btn-add {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s;
+}
+.btn-add:active { opacity: 0.75; }
+
+.main { flex: 1; padding: 16px; max-width: 1000px; margin: 0 auto; width: 100%; }
+
+/* Alerts */
+.alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+.alert-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.alert-danger { background: var(--danger-bg); color: var(--danger-text); }
+.alert-warn { background: var(--warn-bg); color: var(--warn-text); }
+.alert-info { background: var(--info-bg); color: var(--info-text); }
+
+/* Stats */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.stat-val { font-size: 26px; font-weight: 600; color: var(--text); font-family: var(--mono); }
+.stat-val.danger { color: var(--danger); }
+.stat-val.warn { color: var(--warn); }
+.stat-val.accent { color: var(--accent); }
+
+/* Tabs + toolbar */
+.controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  padding: 12px 18px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text2);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+.tab .badge-count {
+  display: inline-block;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-radius: 20px;
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: 5px;
+  font-weight: 500;
+}
+.tab.active .badge-count { background: var(--accent-bg); color: var(--accent-text); }
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  flex-wrap: wrap;
+}
+.toolbar input, .toolbar select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
+.toolbar input { flex: 1; min-width: 150px; }
+
+/* Table */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; min-width: 780px; }
+th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+  font-size: 13px;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+
+.pat-name { font-weight: 500; }
+.pat-no { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.teeth-val { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-pending { background: var(--surface2); color: var(--text2); }
+.badge-done { background: var(--accent-bg); color: var(--accent-text); }
+.badge-overdue { background: var(--danger-bg); color: var(--danger-text); }
+.badge-today { background: var(--warn-bg); color: var(--warn-text); }
+.badge-soon { background: var(--info-bg); color: var(--info-text); }
+
+/* Check button */
+.chk {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+  transition: all 0.15s;
+}
+.chk:active { transform: scale(0.9); }
+.chk.done {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Action btn */
+.btn-row {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text2);
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.btn-row:hover { background: var(--bg); border-color: var(--border2); }
+
+/* Empty */
+.empty { text-align: center; padding: 3rem 1rem; color: var(--text3); }
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+
+/* Loading */
+.loading { text-align: center; padding: 3rem; color: var(--text3); font-size: 14px; }
+.spinner {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 100;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.modal-overlay.open { display: flex; }
+
+@media (min-width: 640px) {
+  .modal-overlay { align-items: center; padding: 20px; }
+  .modal { border-radius: var(--radius-lg) !important; max-height: 90vh !important; }
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.modal-header h2 { font-size: 16px; font-weight: 600; }
+.btn-close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface2);
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+
+.modal-body { padding: 18px 20px; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 12px; color: var(--text2); font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.form-group input[readonly] { background: var(--surface2); color: var(--text2); cursor: default; }
+.form-group textarea { resize: vertical; min-height: 70px; }
+
+/* Teeth grid */
+.teeth-section { margin-top: 4px; }
+.jaw-label {
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 5px;
+  text-align: center;
+}
+.tooth-row {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.tooth {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  user-select: none;
+}
+.tooth.sel {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+.tooth:active { transform: scale(0.9); }
+.teeth-selected { font-size: 12px; color: var(--text3); margin-top: 6px; font-family: var(--mono); }
+
+/* Modal footer */
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.btn-cancel {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 14px;
+  font-family: var(--font);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-cancel:active { background: var(--surface2); }
+.btn-save {
+  flex: 2;
+  border: none;
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-save:active { opacity: 0.8; }
+.btn-delete {
+  border: 1px solid var(--danger-bg);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+/* Sync indicator */
+.sync-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  margin-right: 5px;
+}
+.sync-dot.syncing { background: var(--warn); animation: pulse 1s infinite; }
+.sync-dot.error { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.sync-label { font-size: 12px; color: var(--text3); display: flex; align-items: center; }
+
+@media (max-width: 500px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .main { padding: 12px; }
+  .topbar { padding: 10px 14px; padding-top: max(10px, env(safe-area-inset-top)); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="date-label" id="date-label"></div>
+      <h1>技工物 納品管理</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="sync-label"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">同期済み</span></span>
+      <button class="btn-add" onclick="openAdd()">＋ 登録</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="alerts" id="alerts"></div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">全件数</div><div class="stat-val" id="s-all">—</div></div>
+      <div class="stat"><div class="stat-label">未納品</div><div class="stat-val" id="s-pending">—</div></div>
+      <div class="stat"><div class="stat-label">本日予約</div><div class="stat-val warn" id="s-today">—</div></div>
+      <div class="stat"><div class="stat-label">遅延</div><div class="stat-val danger" id="s-overdue">—</div></div>
+    </div>
+
+    <div class="controls">
+      <div class="tabs">
+        <button class="tab active" onclick="setTab('all',this)">すべて</button>
+        <button class="tab" onclick="setTab('pending',this)">未納品</button>
+        <button class="tab" onclick="setTab('today',this)">本日予約</button>
+        <button class="tab" onclick="setTab('overdue',this)">遅延 <span class="badge-count" id="overdue-count" style="display:none"></span></button>
+        <button class="tab" onclick="setTab('done',this)">納品済み</button>
+      </div>
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="患者名・番号で検索..." oninput="render()">
+        <select id="flab" onchange="render()"><option value="">すべての技工所</option></select>
+        <select id="ftype" onchange="render()"><option value="">すべての種類</option></select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div id="loading" class="loading"><div class="spinner"></div>読み込み中...</div>
+      <div class="table-scroll" id="table-area" style="display:none">
+        <table>
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>患者番号</th>
+              <th>患者名</th>
+              <th>歯式</th>
+              <th>技工物</th>
+              <th>技工所</th>
+              <th>予約日</th>
+              <th>納品予定</th>
+              <th>状態</th>
+              <th>納品確認</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none">
+          <div class="empty-icon">📋</div>
+          <p>該当するデータがありません</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>新規登録</h2>
+      <button class="btn-close" onclick="closeAdd()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="form-group">
+          <label>患者番号</label>
+          <input type="text" id="f-patno" placeholder="例: 00123">
+        </div>
+        <div class="form-group full">
+          <label>患者名</label>
+          <input type="text" id="f-name" placeholder="フリガナまたは漢字">
+        </div>
+        <div class="form-group">
+          <label>技工所</label>
+          <select id="f-lab">
+            <option>技工所A</option>
+            <option>技工所B</option>
+            <option>技工所C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>技工物種類</label>
+          <select id="f-type">
+            <option>Br（ブリッジ）</option>
+            <option>Cr（クラウン）</option>
+            <option>FD（総義歯）</option>
+            <option>PD（部分義歯）</option>
+            <option>Tec（テック）</option>
+            <option>Inlay</option>
+            <option>ジルコニア</option>
+            <option>セラミック</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>予約日</label>
+          <input type="date" id="f-appt">
+        </div>
+        <div class="form-group">
+          <label>納品予定日</label>
+          <input type="date" id="f-eta">
+        </div>
+        <div class="form-group full">
+          <label>指示・備考（任意）</label>
+          <textarea id="f-note" placeholder="例: 前装冠、単色など"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>歯式（タップして選択）</label>
+          <div class="teeth-section">
+            <div class="jaw-label">上顎　右側 → ← 左側</div>
+            <div class="tooth-row" id="upper-add"></div>
+            <div class="jaw-label" style="margin-top:4px">下顎　右側 → ← 左側</div>
+            <div class="tooth-row" id="lower-add"></div>
+            <div class="teeth-selected">選択中: <span id="teeth-sel-add">なし</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAdd()">キャンセル</button>
+      <button class="btn-save" onclick="saveNew()">登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>詳細・編集</h2>
+      <button class="btn-close" onclick="closeEdit()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="e-date">
+        </div>
+        <div class="form-group">
+          <label>患者番号</label>
+          <input type="text" id="e-patno">
+        </div>
+        <div class="form-group full">
+          <label>患者名</label>
+          <input type="text" id="e-name">
+        </div>
+        <div class="form-group">
+          <label>技工所</label>
+          <select id="e-lab">
+            <option>技工所A</option>
+            <option>技工所B</option>
+            <option>技工所C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>技工物種類</label>
+          <select id="e-type">
+            <option>Br（ブリッジ）</option>
+            <option>Cr（クラウン）</option>
+            <option>FD（総義歯）</option>
+            <option>PD（部分義歯）</option>
+            <option>Tec（テック）</option>
+            <option>Inlay</option>
+            <option>ジルコニア</option>
+            <option>セラミック</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>予約日</label>
+          <input type="date" id="e-appt">
+        </div>
+        <div class="form-group">
+          <label>納品予定日</label>
+          <input type="date" id="e-eta">
+        </div>
+        <div class="form-group">
+          <label>実際の納品日</label>
+          <input type="date" id="e-delivered">
+        </div>
+        <div class="form-group">
+          <label>歯式</label>
+          <input type="text" id="e-teeth" readonly>
+        </div>
+        <div class="form-group full">
+          <label>指示・備考</label>
+          <textarea id="e-note"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-delete" onclick="deleteRec()">削除</button>
+      <button class="btn-cancel" onclick="closeEdit()">キャンセル</button>
+      <button class="btn-save" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://hqiieomajoqbihflvlmj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaWllb21ham9xYmloZmx2bG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTQxOTAsImV4cCI6MjA5MTg3MDE5MH0.rOmxvuh-zM4afFOwJYWTpv2mBCPQiCDcjEJs6sAg0hI';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const UPPER = ['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28'];
+const LOWER = ['48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'];
+
+let records = [];
+let currentTab = 'all';
+let editId = null;
+let selTeeth = [];
+
+function today() { return new Date().toISOString().slice(0,10); }
+function fmt(d) {
+  if(!d) return '—';
+  const p = d.split('-');
+  return p[1]+'/'+p[2];
+}
+function daysDiff(a, b) {
+  return Math.round((new Date(a) - new Date(b)) / 86400000);
+}
+function getStatus(r) {
+  const t = today();
+  if(r.delivered) return 'done';
+  if(r.eta && r.eta < t) return 'overdue';
+  if(r.appt === t) return 'today';
+  if(r.eta && daysDiff(r.eta, t) <= 1) return 'soon';
+  return 'pending';
+}
+
+function setSyncState(state) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  dot.className = 'sync-dot' + (state==='syncing' ? ' syncing' : state==='error' ? ' error' : '');
+  txt.textContent = state==='syncing' ? '同期中...' : state==='error' ? 'エラー' : '同期済み';
+}
+
+async function load() {
+  setSyncState('syncing');
+  const { data, error } = await sb.from('records').select('*').order('created_at', { ascending: false });
+  if(error) { setSyncState('error'); console.error(error); return; }
+  records = data || [];
+  setSyncState('ok');
+  initFilters();
+  render();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('table-area').style.display = 'block';
+}
+
+function initFilters() {
+  const labs = [...new Set(records.map(r=>r.lab).filter(Boolean))];
+  const types = [...new Set(records.map(r=>r.type).filter(Boolean))];
+  const fl = document.getElementById('flab');
+  const ft = document.getElementById('ftype');
+  const lv = fl.value, tv = ft.value;
+  fl.innerHTML = '<option value="">すべての技工所</option>' + labs.map(l=>`<option>${l}</option>`).join('');
+  ft.innerHTML = '<option value="">すべての種類</option>' + types.map(t=>`<option>${t}</option>`).join('');
+  fl.value = lv; ft.value = tv;
+}
+
+function render() {
+  const t = today();
+  document.getElementById('date-label').textContent =
+    new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+
+  const q = document.getElementById('search').value.toLowerCase();
+  const flab = document.getElementById('flab').value;
+  const ftype = document.getElementById('ftype').value;
+
+  const overdue = records.filter(r => getStatus(r)==='overdue');
+  const todayRecs = records.filter(r => r.appt===t && !r.delivered);
+  const pending = records.filter(r => !r.delivered);
+
+  document.getElementById('s-all').textContent = records.length;
+  document.getElementById('s-pending').textContent = pending.length;
+  document.getElementById('s-today').textContent = todayRecs.length;
+  document.getElementById('s-overdue').textContent = overdue.length;
+
+  const oc = document.getElementById('overdue-count');
+  if(overdue.length) { oc.style.display=''; oc.textContent=overdue.length; } else { oc.style.display='none'; }
+
+  // Alerts
+  const alertsEl = document.getElementById('alerts');
+  let html = '';
+  if(overdue.length) {
+    html += `<div class="alert alert-danger"><span class="alert-icon">⚠️</span>未納品・遅延: ${overdue.map(r=>r.name+'（'+r.lab+'）').join('、')}</div>`;
+  }
+  if(todayRecs.length) {
+    html += `<div class="alert alert-warn"><span class="alert-icon">📅</span>本日予約: ${todayRecs.map(r=>r.name).join('、')}</div>`;
+  }
+  const soon = records.filter(r=>!r.delivered&&r.eta&&daysDiff(r.eta,t)===1);
+  if(soon.length) {
+    html += `<div class="alert alert-info"><span class="alert-icon">📦</span>明日が納品予定: ${soon.map(r=>r.name+'（'+fmt(r.eta)+'）').join('、')}</div>`;
+  }
+  alertsEl.innerHTML = html;
+
+  let filtered = records.filter(r => {
+    const st = getStatus(r);
+    if(currentTab==='pending' && r.delivered) return false;
+    if(currentTab==='today' && st!=='today') return false;
+    if(currentTab==='overdue' && st!=='overdue') return false;
+    if(currentTab==='done' && !r.delivered) return false;
+    if(q && !r.name?.toLowerCase().includes(q) && !r.patno?.includes(q)) return false;
+    if(flab && r.lab!==flab) return false;
+    if(ftype && r.type!==ftype) return false;
+    return true;
+  });
+
+  filtered.sort((a,b) => (a.appt||'') > (b.appt||'') ? 1 : -1);
+
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty');
+
+  if(!filtered.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  const statusMap = {
+    done: ['badge-done','納品済み'],
+    overdue: ['badge-overdue','遅延'],
+    today: ['badge-today','本日予約'],
+    soon: ['badge-soon','まもなく'],
+    pending: ['badge-pending','待ち']
+  };
+
+  tbody.innerHTML = filtered.map(r => {
+    const st = getStatus(r);
+    const [bc, bl] = statusMap[st];
+    const chkCls = r.delivered ? 'chk done' : 'chk';
+    const chkIcon = r.delivered ? '✓' : '';
+    return `<tr>
+      <td>${fmt(r.date)}</td>
+      <td><span class="pat-no">${r.patno||'—'}</span></td>
+      <td><span class="pat-name">${r.name||'—'}</span></td>
+      <td><span class="teeth-val">${r.teeth||'—'}</span></td>
+      <td>${r.type||'—'}</td>
+      <td>${r.lab||'—'}</td>
+      <td>${fmt(r.appt)}</td>
+      <td>${fmt(r.eta)}</td>
+      <td><span class="badge ${bc}">${bl}</span></td>
+      <td><button class="${chkCls}" title="${r.delivered?'納品日: '+r.delivered:'納品チェック'}" onclick="toggleDelivered('${r.id}')">${chkIcon}</button></td>
+      <td><button class="btn-row" onclick="openEdit('${r.id}')">詳細</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function setTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+// Teeth grid
+function buildTeeth(upperId, lowerId, selArr, onToggle) {
+  const make = (ids, containerId) => {
+    const c = document.getElementById(containerId);
+    c.innerHTML = ids.map(n=>`<div class="tooth${selArr.includes(n)?' sel':''}" onclick="${onToggle}('${n}')">${n}</div>`).join('');
+  };
+  make(UPPER, upperId);
+  make(LOWER, lowerId);
+}
+
+function toggleToothAdd(n) {
+  if(selTeeth.includes(n)) selTeeth = selTeeth.filter(x=>x!==n);
+  else selTeeth.push(n);
+  document.querySelectorAll('#upper-add .tooth, #lower-add .tooth').forEach(el => {
+    el.classList.toggle('sel', selTeeth.includes(el.textContent));
+  });
+  document.getElementById('teeth-sel-add').textContent = selTeeth.length ? selTeeth.join(', ') : 'なし';
+}
+
+function openAdd() {
+  selTeeth = [];
+  document.getElementById('f-date').value = today();
+  document.getElementById('f-patno').value = '';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-note').value = '';
+  document.getElementById('f-appt').value = '';
+  document.getElementById('f-eta').value = '';
+  buildTeeth('upper-add','lower-add', selTeeth, 'toggleToothAdd');
+  document.getElementById('teeth-sel-add').textContent = 'なし';
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeAdd() { document.getElementById('add-modal').classList.remove('open'); }
+
+async function saveNew() {
+  const name = document.getElementById('f-name').value.trim();
+  if(!name) { alert('患者名を入力してください'); return; }
+  const rec = {
+    date: document.getElementById('f-date').value,
+    patno: document.getElementById('f-patno').value.trim(),
+    name,
+    lab: document.getElementById('f-lab').value,
+    type: document.getElementById('f-type').value,
+    teeth: selTeeth.join(', '),
+    appt: document.getElementById('f-appt').value,
+    eta: document.getElementById('f-eta').value,
+    note: document.getElementById('f-note').value.trim(),
+    delivered: ''
+  };
+  setSyncState('syncing');
+  const { error } = await sb.from('records').insert([rec]);
+  if(error) { setSyncState('error'); alert('保存に失敗しました: '+error.message); return; }
+  closeAdd();
+  await load();
+}
+
+function openEdit(id) {
+  editId = id;
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('e-date').value = r.date||'';
+  document.getElementById('e-patno').value = r.patno||'';
+  document.getElementById('e-name').value = r.name||'';
+  document.getElementById('e-lab').value = r.lab||'技工所A';
+  document.getElementById('e-type').value = r.type||'';
+  document.getElementById('e-appt').value = r.appt||'';
+  document.getElementById('e-eta').value = r.eta||'';
+  document.getElementById('e-delivered').value = r.delivered||'';
+  document.getElementById('e-teeth').value = r.teeth||'';
+  document.getElementById('e-note').value = r.note||'';
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEdit() { document.getElementById('edit-modal').classList.remove('open'); }
+
+async function saveEdit() {
+  const upd = {
+    date: document.getElementById('e-date').value,
+    patno: document.getElementById('e-patno').value.trim(),
+    name: document.getElementById('e-name').value.trim(),
+    lab: document.getElementById('e-lab').value,
+    type: document.getElementById('e-type').value,
+    appt: document.getElementById('e-appt').value,
+    eta: document.getElementById('e-eta').value,
+    delivered: document.getElementById('e-delivered').value,
+    teeth: document.getElementById('e-teeth').value,
+    note: document.getElementById('e-note').value.trim()
+  };
+  setSyncState('syncing');
+  const { error } = await sb.from('records').update(upd).eq('id', editId);
+  if(error) { setSyncState('error'); alert('保存に失敗しました: '+error.message); return; }
+  closeEdit();
+  await load();
+}
+
+async function deleteRec() {
+  if(!confirm('この記録を削除しますか？')) return;
+  setSyncState('syncing');
+  const { error } = await sb.from('records').delete().eq('id', editId);
+  if(error) { setSyncState('error'); alert('削除に失敗しました'); return; }
+  closeEdit();
+  await load();
+}
+
+async function toggleDelivered(id) {
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  const newVal = r.delivered ? '' : today();
+  setSyncState('syncing');
+  const { error } = await sb.from('records').update({delivered: newVal}).eq('id', id);
+  if(error) { setSyncState('error'); return; }
+  await load();
+}
+
+// Close modals on overlay click
+document.getElementById('add-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeAdd(); });
+document.getElementById('edit-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeEdit(); });
+
+load();
+</script>
+</body>
+</html>
