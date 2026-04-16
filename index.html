@@ -70,6 +70,14 @@ th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; co
 td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg); }
+tr.row-done td { color: var(--text3); text-decoration: line-through; }
+tr.row-done .chk { text-decoration: none; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--text); background: var(--border); }
+th .sort-icon { margin-left: 4px; font-size: 10px; opacity: 0.5; }
+th.sort-asc .sort-icon::after { content: '▲'; opacity: 1; }
+th.sort-desc .sort-icon::after { content: '▼'; opacity: 1; }
+th .sort-icon::after { content: '⇅'; }
 .pat-name { font-weight: 500; }
 .pat-no { font-family: var(--mono); font-size: 12px; color: var(--text2); }
 .teeth-val { font-family: var(--mono); font-size: 12px; color: var(--text2); }
@@ -220,8 +228,11 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
       <div class="table-scroll" id="table-area" style="display:none">
         <table>
           <thead><tr>
-            <th>日付</th><th>患者番号</th><th>患者名</th><th>歯式</th>
-            <th>技工物</th><th>技工所</th><th>予約日</th><th>納品予定</th>
+            <th class="sortable" id="th-date" onclick="toggleSort('date')">日付<span class="sort-icon"></span></th>
+            <th>患者番号</th><th>患者名</th><th>歯式</th>
+            <th>技工物</th><th>技工所</th>
+            <th class="sortable" id="th-appt" onclick="toggleSort('appt')">予約日<span class="sort-icon"></span></th>
+            <th class="sortable" id="th-eta" onclick="toggleSort('eta')">納品予定<span class="sort-icon"></span></th>
             <th>状態</th><th>納品確認</th><th></th>
           </tr></thead>
           <tbody id="tbody"></tbody>
@@ -336,7 +347,21 @@ function saveSettingsLocal() {
 let records=[], currentTab='all', editId=null, selTeeth=[];
 const PAGE_SIZE = 30;
 let currentPage = 1;
-let toothMode = 'permanent'; // 'permanent' or 'primary'
+let toothMode = 'permanent';
+let sortKey = 'appt', sortDir = 'asc'; // default sort
+
+function toggleSort(key) {
+  if(sortKey===key) sortDir = sortDir==='asc' ? 'desc' : 'asc';
+  else { sortKey=key; sortDir='asc'; }
+  currentPage=1;
+  // Update header classes
+  ['date','appt','eta'].forEach(k=>{
+    const th=document.getElementById('th-'+k);
+    if(!th) return;
+    th.className='sortable'+(sortKey===k ? ' sort-'+sortDir : '');
+  });
+  render();
+}
 
 // Palmer notation helpers
 const SYM = {UR:'┘', UL:'└', LR:'┐', LL:'┌'};
@@ -506,7 +531,10 @@ function render() {
     if(ftype&&!r.type?.includes(ftype)) return false;
     return true;
   });
-  filtered.sort((a,b)=>(a.appt||'')>(b.appt||'')?1:-1);
+  filtered.sort((a,b)=>{
+    const va=a[sortKey]||'', vb=b[sortKey]||'';
+    return sortDir==='asc' ? (va>vb?1:-1) : (va<vb?1:-1);
+  });
   const tbody=document.getElementById('tbody'),empty=document.getElementById('empty');
   if(!filtered.length){tbody.innerHTML='';empty.style.display='block';document.getElementById('pagination').style.display='none';return;}
   empty.style.display='none';
@@ -517,12 +545,12 @@ function render() {
   const start = (currentPage-1)*PAGE_SIZE;
   const paged = filtered.slice(start, start+PAGE_SIZE);
 
-  // ⑤ row color classes
   const statusMap={done:['badge-done','納品済み'],overdue:['badge-overdue','遅延'],upcoming:['badge-today','前日／当日'],pending:['badge-pending','待ち']};
   tbody.innerHTML=paged.map(r=>{
     const st=getStatus(r),[bc,bl]=statusMap[st]||['badge-pending','待ち'];
-    const rowClass = st==='overdue' ? ' class="row-overdue"' : st==='upcoming' ? ' class="row-upcoming"' : '';
-    return `<tr${rowClass}>
+    // ① 納品済みは取り消し線、② 遅延・前日当日は背景色
+    const rowClass = st==='done' ? 'row-done' : st==='overdue' ? 'row-overdue' : st==='upcoming' ? 'row-upcoming' : '';
+    return `<tr${rowClass?' class="'+rowClass+'"':''}>
       <td>${fmt(r.date)}</td><td><span class="pat-no">${r.patno||'—'}</span></td>
       <td><span class="pat-name">${r.name||'—'}</span></td>
       <td><span class="teeth-val">${r.teeth||'—'}</span></td>
