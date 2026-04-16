@@ -102,18 +102,26 @@ tr:hover td { background: var(--bg); }
 .btn-save:active { opacity: 0.8; }
 .btn-delete { border: 1px solid var(--danger-bg); background: var(--danger-bg); color: var(--danger-text); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; font-family: var(--font); cursor: pointer; }
 
-/* Palmer chart */
-.palmer-wrap { border: 1px solid var(--border2); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
-.palmer-header { display: grid; grid-template-columns: 1fr 32px 1fr; background: var(--surface2); border-bottom: 1px solid var(--border); }
-.palmer-header-cell { text-align: center; font-size: 11px; color: var(--text3); padding: 4px; }
-.palmer-grid { display: grid; grid-template-columns: 1fr 32px 1fr; }
-.palmer-quadrant { display: grid; grid-template-columns: repeat(8,1fr); }
-.palmer-center-col { display: flex; align-items: center; justify-content: center; background: var(--surface2); border-left: 1px solid var(--border2); border-right: 1px solid var(--border2); font-size: 11px; color: var(--text3); writing-mode: vertical-rl; letter-spacing: 2px; }
-.palmer-divider { height: 1px; background: var(--border2); grid-column: 1/-1; }
-.tooth { height: 36px; border-right: 1px solid var(--border); font-size: 12px; font-family: var(--mono); cursor: pointer; background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; transition: all 0.1s; user-select: none; border-bottom: 1px solid var(--border); }
+/* Palmer chart — karte style */
+.palmer-wrap { border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surface); overflow: hidden; font-family: var(--mono); user-select: none; }
+.palmer-jaw-row { display: grid; grid-template-columns: repeat(8,1fr) 3px repeat(8,1fr); }
+.palmer-jaw-row.upper .tooth { border-bottom: 1px solid var(--border); }
+.palmer-jaw-row.lower .tooth { border-top: 1px solid var(--border); }
+.palmer-center-v { background: var(--border2); }
+.palmer-h-line { height: 3px; background: var(--border2); }
+.palmer-labels { display: grid; grid-template-columns: repeat(8,1fr) 3px repeat(8,1fr); background: var(--surface2); }
+.palmer-labels.top { border-bottom: 1px solid var(--border); }
+.palmer-labels.bottom { border-top: 1px solid var(--border); }
+.palmer-labels span { text-align: center; font-size: 10px; color: var(--text3); padding: 3px 0; }
+.palmer-labels .spacer { background: var(--border2); }
+.palmer-side-label { display: grid; grid-template-columns: 1fr 3px 1fr; background: var(--surface2); }
+.palmer-side-label span { text-align: center; font-size: 11px; color: var(--text3); padding: 3px 6px; }
+.palmer-side-label .right { text-align: right; }
+.palmer-side-label .left { text-align: left; }
+.palmer-side-label .div { background: var(--border2); }
+.tooth { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-family: var(--mono); font-weight: 500; color: var(--text3); cursor: pointer; transition: all 0.1s; border-right: 1px solid var(--border); }
 .tooth:last-child { border-right: none; }
-.palmer-bottom-grid .tooth { border-bottom: none; border-top: none; }
-.tooth.sel { background: var(--accent); color: #fff; font-weight: 600; }
+.tooth.sel { background: var(--accent); color: #fff; font-weight: 700; }
 .tooth:active { opacity: 0.6; }
 .teeth-selected { font-size: 13px; color: var(--text2); margin-top: 8px; font-family: var(--mono); min-height: 20px; letter-spacing: 1px; }
 
@@ -297,37 +305,31 @@ const Q_ORDER = {UR:0,UL:1,LR:2,LL:3};
 
 function buildPalmerChart(containerId) {
   const c = document.getElementById(containerId);
-  // Upper row: UR goes 8→1 (right to left visually), UL goes 1→8
-  // Lower row: LR goes 8→1, LL goes 1→8
-  const makeQuad = (q, nums) => nums.map(n => {
+  const makeTooth = (q, n) => {
     const key = q+n;
     const sel = selTeeth.includes(key) ? ' sel' : '';
     return `<div class="tooth${sel}" data-key="${key}" onclick="toggleTooth('${key}','${containerId}')">${n}</div>`;
-  }).join('');
+  };
+  // UR: 8→1 (right side, upper), UL: 1→8 (left side, upper)
+  // LR: 8→1 (right side, lower), LL: 1→8 (left side, lower)
+  const urRow = [8,7,6,5,4,3,2,1].map(n=>makeTooth('UR',n)).join('');
+  const ulRow = [1,2,3,4,5,6,7,8].map(n=>makeTooth('UL',n)).join('');
+  const lrRow = [8,7,6,5,4,3,2,1].map(n=>makeTooth('LR',n)).join('');
+  const llRow = [1,2,3,4,5,6,7,8].map(n=>makeTooth('LL',n)).join('');
+  const numRow = [8,7,6,5,4,3,2,1].map(n=>`<span>${n}</span>`).join('')
+               + '<span class="spacer"></span>'
+               + [1,2,3,4,5,6,7,8].map(n=>`<span>${n}</span>`).join('');
 
   c.innerHTML = `
     <div class="palmer-wrap">
-      <div class="palmer-header">
-        <div class="palmer-header-cell">右側（上顎）</div>
-        <div class="palmer-header-cell"></div>
-        <div class="palmer-header-cell">左側（上顎）</div>
+      <div class="palmer-side-label">
+        <span class="right">右側</span><span class="div"></span><span class="left">左側</span>
       </div>
-      <div class="palmer-grid">
-        <div class="palmer-quadrant">${makeQuad('UR',[8,7,6,5,4,3,2,1])}</div>
-        <div class="palmer-center-col">上顎</div>
-        <div class="palmer-quadrant">${makeQuad('UL',[1,2,3,4,5,6,7,8])}</div>
-      </div>
-      <div style="height:2px;background:var(--border2)"></div>
-      <div class="palmer-grid palmer-bottom-grid">
-        <div class="palmer-quadrant">${makeQuad('LR',[8,7,6,5,4,3,2,1])}</div>
-        <div class="palmer-center-col">下顎</div>
-        <div class="palmer-quadrant">${makeQuad('LL',[1,2,3,4,5,6,7,8])}</div>
-      </div>
-      <div class="palmer-header" style="border-top:1px solid var(--border);border-bottom:none">
-        <div class="palmer-header-cell">右側（下顎）</div>
-        <div class="palmer-header-cell"></div>
-        <div class="palmer-header-cell">左側（下顎）</div>
-      </div>
+      <div class="palmer-labels top">${numRow}</div>
+      <div class="palmer-jaw-row upper">${urRow}<div class="palmer-center-v"></div>${ulRow}</div>
+      <div class="palmer-h-line"></div>
+      <div class="palmer-jaw-row lower">${lrRow}<div class="palmer-center-v"></div>${llRow}</div>
+      <div class="palmer-labels bottom">${numRow}</div>
     </div>`;
 }
 
