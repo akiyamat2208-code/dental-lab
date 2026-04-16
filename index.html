@@ -136,7 +136,18 @@ tr:hover td { background: var(--bg); }
 .btn-icon.del { border-color: var(--danger-bg); background: var(--danger-bg); color: var(--danger-text); }
 .btn-add-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px dashed var(--border2); border-radius: var(--radius); background: transparent; font-size: 13px; color: var(--text3); cursor: pointer; font-family: var(--font); width: 100%; margin-top: 4px; }
 .btn-add-item:hover { border-color: var(--accent); color: var(--accent); }
-.type-check-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.tooth-mode-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.tooth-mode-btn { border: none; background: transparent; padding: 5px 12px; font-size: 12px; font-family: var(--font); color: var(--text2); cursor: pointer; }
+.tooth-mode-btn.active { background: var(--accent); color: #fff; font-weight: 500; }
+.palmer-primary .tooth { color: var(--info); font-style: italic; }
+.palmer-primary .tooth.sel { background: var(--info); color: #fff; } align-items: center; justify-content: space-between; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface2); }
+.pagination-info { font-size: 12px; color: var(--text3); }
+.pagination-btns { display: flex; gap: 4px; align-items: center; }
+.pg-btn { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: var(--text2); font-family: var(--font); min-width: 36px; text-align: center; }
+.pg-btn:hover { background: var(--bg); border-color: var(--border2); }
+.pg-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 500; }
+.pg-btn:disabled { opacity: 0.35; cursor: default; }
+.pg-btn.nav { padding: 6px 14px; }
 .type-chip { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 13px; color: var(--text2); background: var(--bg); transition: all 0.12s; user-select: none; }
 .type-chip.sel { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); font-weight: 500; }
 .type-chip:active { opacity: 0.7; }
@@ -187,9 +198,9 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <button class="tab" onclick="setTab('done',this)">納品済み</button>
       </div>
       <div class="toolbar">
-        <input type="text" id="search" placeholder="患者名・番号で検索..." oninput="render()">
-        <select id="flab" onchange="render()"><option value="">すべての技工所</option></select>
-        <select id="ftype" onchange="render()"><option value="">すべての種類</option></select>
+        <input type="text" id="search" placeholder="患者名・番号で検索..." oninput="currentPage=1;render()">
+        <select id="flab" onchange="currentPage=1;render()"><option value="">すべての技工所</option></select>
+        <select id="ftype" onchange="currentPage=1;render()"><option value="">すべての種類</option></select>
       </div>
     </div>
     <div class="table-wrap">
@@ -204,6 +215,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
           <tbody id="tbody"></tbody>
         </table>
         <div id="empty" class="empty" style="display:none"><div class="empty-icon">📋</div><p>該当するデータがありません</p></div>
+        <div id="pagination" class="pagination" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -216,15 +228,21 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>日付</label><input type="date" id="f-date"></div>
-        <div class="form-group"><label>患者番号</label><input type="text" id="f-patno" placeholder="例: 00123"></div>
-        <div class="form-group full"><label>患者名</label><input type="text" id="f-name" placeholder="フリガナまたは漢字"></div>
+        <div class="form-group"><label>患者番号 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-patno" placeholder="例: 00123"></div>
+        <div class="form-group full"><label>患者名 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-name" placeholder="フリガナまたは漢字"></div>
         <div class="form-group"><label>技工所</label><select id="f-lab"></select></div>
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="f-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="f-appt"></div>
         <div class="form-group"><label>納品予定日</label><input type="date" id="f-eta"></div>
         <div class="form-group full"><label>指示・備考（任意）</label><textarea id="f-note" placeholder="例: 前装冠、単色など"></textarea></div>
         <div class="form-group full">
-          <label>歯式（Palmer表記）</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label>歯式（Palmer表記）</label>
+            <div class="tooth-mode-toggle">
+              <button class="tooth-mode-btn active" id="btn-perm" onclick="setToothMode('permanent')">永久歯</button>
+              <button class="tooth-mode-btn" id="btn-prim" onclick="setToothMode('primary')">乳歯</button>
+            </div>
+          </div>
           <div id="palmer-add" style="margin-top:4px"></div>
           <div class="teeth-selected">選択中: <span id="teeth-sel-add">なし</span></div>
         </div>
@@ -304,40 +322,61 @@ function saveSettingsLocal() {
 }
 
 let records=[], currentTab='all', editId=null, selTeeth=[];
+const PAGE_SIZE = 30;
+let currentPage = 1;
+let toothMode = 'permanent'; // 'permanent' or 'primary'
 
 // Palmer notation helpers
-// Quadrants: UR=upper-right, UL=upper-left, LR=lower-right, LL=lower-left
 const SYM = {UR:'┘', UL:'└', LR:'┐', LL:'┌'};
 const Q_ORDER = {UR:0,UL:1,LR:2,LL:3};
 
+// 永久歯: 1〜8、乳歯: A〜E
+const PERM_NUMS = [8,7,6,5,4,3,2,1];
+const PRIM_LETTERS = ['E','D','C','B','A']; // right→left for display
+
+function setToothMode(mode) {
+  toothMode = mode;
+  document.getElementById('btn-perm').classList.toggle('active', mode==='permanent');
+  document.getElementById('btn-prim').classList.toggle('active', mode==='primary');
+  buildPalmerChart('palmer-add');
+}
+
 function buildPalmerChart(containerId) {
   const c = document.getElementById(containerId);
+  const isPrim = toothMode === 'primary';
+  const rightNums = isPrim ? ['E','D','C','B','A'] : [8,7,6,5,4,3,2,1];
+  const leftNums  = isPrim ? ['A','B','C','D','E'] : [1,2,3,4,5,6,7,8];
+  const cols = isPrim ? 5 : 8;
+
   const makeTooth = (q, n) => {
     const key = q+n;
     const sel = selTeeth.includes(key) ? ' sel' : '';
     return `<div class="tooth${sel}" data-key="${key}" onclick="toggleTooth('${key}','${containerId}')">${n}</div>`;
   };
-  // UR: 8→1 (right side, upper), UL: 1→8 (left side, upper)
-  // LR: 8→1 (right side, lower), LL: 1→8 (left side, lower)
-  const urRow = [8,7,6,5,4,3,2,1].map(n=>makeTooth('UR',n)).join('');
-  const ulRow = [1,2,3,4,5,6,7,8].map(n=>makeTooth('UL',n)).join('');
-  const lrRow = [8,7,6,5,4,3,2,1].map(n=>makeTooth('LR',n)).join('');
-  const llRow = [1,2,3,4,5,6,7,8].map(n=>makeTooth('LL',n)).join('');
-  const numRow = [8,7,6,5,4,3,2,1].map(n=>`<span>${n}</span>`).join('')
+
+  const urRow = rightNums.map(n=>makeTooth('UR',n)).join('');
+  const ulRow = leftNums.map(n=>makeTooth('UL',n)).join('');
+  const lrRow = rightNums.map(n=>makeTooth('LR',n)).join('');
+  const llRow = leftNums.map(n=>makeTooth('LL',n)).join('');
+  const numRow = rightNums.map(n=>`<span>${n}</span>`).join('')
                + '<span class="spacer"></span>'
-               + [1,2,3,4,5,6,7,8].map(n=>`<span>${n}</span>`).join('');
+               + leftNums.map(n=>`<span>${n}</span>`).join('');
+
+  const gridCols = `repeat(${cols},1fr) 3px repeat(${cols},1fr)`;
+  const primClass = isPrim ? ' palmer-primary' : '';
 
   c.innerHTML = `
-    <div class="palmer-wrap">
+    <div class="palmer-wrap${primClass}">
       <div class="palmer-side-label">
         <span class="right">右側</span><span class="div"></span><span class="left">左側</span>
       </div>
-      <div class="palmer-labels top">${numRow}</div>
-      <div class="palmer-jaw-row upper">${urRow}<div class="palmer-center-v"></div>${ulRow}</div>
+      <div class="palmer-labels top" style="grid-template-columns:${gridCols}">${numRow}</div>
+      <div class="palmer-jaw-row upper" style="grid-template-columns:${gridCols}">${urRow}<div class="palmer-center-v"></div>${ulRow}</div>
       <div class="palmer-h-line"></div>
-      <div class="palmer-jaw-row lower">${lrRow}<div class="palmer-center-v"></div>${llRow}</div>
-      <div class="palmer-labels bottom">${numRow}</div>
-    </div>`;
+      <div class="palmer-jaw-row lower" style="grid-template-columns:${gridCols}">${lrRow}<div class="palmer-center-v"></div>${llRow}</div>
+      <div class="palmer-labels bottom" style="grid-template-columns:${gridCols}">${numRow}</div>
+    </div>
+    ${isPrim ? '<div style="font-size:11px;color:var(--info);margin-top:4px;text-align:center">乳歯（A〜E）を選択中</div>' : ''}`;
 }
 
 function toggleTooth(key, containerId) {
@@ -350,15 +389,20 @@ function toggleTooth(key, containerId) {
 }
 
 function sortTeeth(arr) {
+  const LETTER_ORDER = {A:1,B:2,C:3,D:4,E:5};
   return [...arr].sort((a,b) => {
-    const qa=a.slice(0,2), qb=b.slice(0,2), na=parseInt(a.slice(2)), nb=parseInt(b.slice(2));
+    const qa=a.slice(0,2), qb=b.slice(0,2);
+    const na=a.slice(2), nb=b.slice(2);
     if(Q_ORDER[qa]!==Q_ORDER[qb]) return Q_ORDER[qa]-Q_ORDER[qb];
-    return na-nb;
+    // letter vs number
+    const va = isNaN(na) ? LETTER_ORDER[na]||0 : parseInt(na);
+    const vb = isNaN(nb) ? LETTER_ORDER[nb]||0 : parseInt(nb);
+    return va-vb;
   });
 }
 
 function teethToStr(arr) {
-  // ① 右側(UR/LR)は数字→記号、左側(UL/LL)は記号→数字
+  // 右側(UR/LR)は数字/文字→記号、左側(UL/LL)は記号→数字/文字
   return sortTeeth(arr).map(k => {
     const q=k.slice(0,2), n=k.slice(2);
     return (q==='UR'||q==='LR') ? n+SYM[q] : SYM[q]+n;
@@ -452,11 +496,18 @@ function render() {
   });
   filtered.sort((a,b)=>(a.appt||'')>(b.appt||'')?1:-1);
   const tbody=document.getElementById('tbody'),empty=document.getElementById('empty');
-  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';return;}
+  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';document.getElementById('pagination').style.display='none';return;}
   empty.style.display='none';
+
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if(currentPage > totalPages) currentPage = 1;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const paged = filtered.slice(start, start+PAGE_SIZE);
+
   // ⑤ row color classes
   const statusMap={done:['badge-done','納品済み'],overdue:['badge-overdue','遅延'],upcoming:['badge-today','前日／当日'],pending:['badge-pending','待ち']};
-  tbody.innerHTML=filtered.map(r=>{
+  tbody.innerHTML=paged.map(r=>{
     const st=getStatus(r),[bc,bl]=statusMap[st]||['badge-pending','待ち'];
     const rowClass = st==='overdue' ? ' class="row-overdue"' : st==='upcoming' ? ' class="row-upcoming"' : '';
     return `<tr${rowClass}>
@@ -470,17 +521,43 @@ function render() {
       <td><button class="btn-row" onclick="openEdit('${r.id}')">詳細</button></td>
     </tr>`;
   }).join('');
+
+  // Render pagination
+  const pg = document.getElementById('pagination');
+  if(totalPages <= 1){ pg.style.display='none'; return; }
+  pg.style.display='flex';
+  const from = start+1, to = Math.min(start+PAGE_SIZE, filtered.length);
+  let btns = '';
+  // prev
+  btns += `<button class="pg-btn nav" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ 前へ</button>`;
+  // page numbers
+  const pageNums = [];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-currentPage)<=2) pageNums.push(i);
+    else if(pageNums[pageNums.length-1]!=='…') pageNums.push('…');
+  }
+  pageNums.forEach(p=>{
+    if(p==='…') btns+=`<span style="padding:0 4px;color:var(--text3)">…</span>`;
+    else btns+=`<button class="pg-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  // next
+  btns += `<button class="pg-btn nav" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>次へ ›</button>`;
+  pg.innerHTML = `<span class="pagination-info">${from}〜${to} 件 / 全${filtered.length}件</span><div class="pagination-btns">${btns}</div>`;
 }
-function setTab(tab,el){currentTab=tab;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');render();}
+function goPage(p){ currentPage=p; render(); window.scrollTo(0,0); }
+function setTab(tab,el){currentPage=1;currentTab=tab;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');render();}
 
 function openAdd(){
   selTeeth.length=0;
+  toothMode='permanent';
   populateSelects();
   buildTypeChips('f-type-list',[]);
   document.getElementById('f-date').value=today();
   ['f-patno','f-name','f-note'].forEach(id=>document.getElementById(id).value='');
   ['f-appt','f-eta'].forEach(id=>document.getElementById(id).value='');
   buildPalmerChart('palmer-add');
+  document.getElementById('btn-perm').classList.add('active');
+  document.getElementById('btn-prim').classList.remove('active');
   document.getElementById('teeth-sel-add').textContent='なし';
   document.getElementById('add-modal').classList.add('open');
 }
@@ -488,12 +565,13 @@ function closeAdd(){document.getElementById('add-modal').classList.remove('open'
 
 async function saveNew(){
   const name=document.getElementById('f-name').value.trim();
+  const patno=document.getElementById('f-patno').value.trim();
   if(!name){alert('患者名を入力してください');return;}
+  if(!patno){alert('患者番号を入力してください');return;}
   const selectedTypes=getSelectedTypes('f-type-list');
   const rec={
     date:document.getElementById('f-date').value,
-    patno:document.getElementById('f-patno').value.trim(),
-    name, lab:document.getElementById('f-lab').value,
+    patno, name, lab:document.getElementById('f-lab').value,
     type:selectedTypes.join('・'),
     teeth:teethToStr(selTeeth),
     appt:document.getElementById('f-appt').value,
@@ -526,11 +604,14 @@ function openEdit(id){
 function closeEdit(){document.getElementById('edit-modal').classList.remove('open');}
 
 async function saveEdit(){
+  const name=document.getElementById('e-name').value.trim();
+  const patno=document.getElementById('e-patno').value.trim();
+  if(!name){alert('患者名を入力してください');return;}
+  if(!patno){alert('患者番号を入力してください');return;}
   const selectedTypes=getSelectedTypes('e-type-list');
   const upd={
     date:document.getElementById('e-date').value,
-    patno:document.getElementById('e-patno').value.trim(),
-    name:document.getElementById('e-name').value.trim(),
+    patno, name,
     lab:document.getElementById('e-lab').value,
     type:selectedTypes.join('・'),
     appt:document.getElementById('e-appt').value,
