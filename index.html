@@ -11,11 +11,15 @@
 <meta name="apple-mobile-web-app-title" content="技工管理">
 <title>技工物 納品管理</title>
 <script>
-// キャッシュ強制更新: バージョンが変わると自動リロード
-const APP_VERSION = '20260416-003';
-const stored = sessionStorage.getItem('app_version');
-if(stored && stored !== APP_VERSION) { sessionStorage.setItem('app_version', APP_VERSION); location.reload(true); }
-else { sessionStorage.setItem('app_version', APP_VERSION); }
+// キャッシュ自動更新（手動変更不要・アップロードのたびに自動更新）
+const APP_VERSION = '__BUILDTIME__';
+const stored = localStorage.getItem('app_version');
+if(stored && stored !== APP_VERSION) {
+  localStorage.setItem('app_version', APP_VERSION);
+  location.href = location.href.split('?')[0] + '?v=' + APP_VERSION;
+} else {
+  localStorage.setItem('app_version', APP_VERSION);
+}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -70,8 +74,6 @@ th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; co
 td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg); }
-tr.row-done td { color: var(--text3); text-decoration: line-through; }
-tr.row-done .chk { text-decoration: none; }
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--text); background: var(--border); }
 th .sort-icon { margin-left: 4px; font-size: 10px; opacity: 0.5; }
