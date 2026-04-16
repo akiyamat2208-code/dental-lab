@@ -3,10 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="技工管理">
 <title>技工物 納品管理</title>
+<script>
+// キャッシュ強制更新: バージョンが変わると自動リロード
+const APP_VERSION = '20260416-003';
+const stored = sessionStorage.getItem('app_version');
+if(stored && stored !== APP_VERSION) { sessionStorage.setItem('app_version', APP_VERSION); location.reload(true); }
+else { sessionStorage.setItem('app_version', APP_VERSION); }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
