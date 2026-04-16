@@ -114,11 +114,8 @@ tr:hover td { background: var(--bg); }
 .palmer-labels.bottom { border-top: 1px solid var(--border); }
 .palmer-labels span { text-align: center; font-size: 10px; color: var(--text3); padding: 3px 0; }
 .palmer-labels .spacer { background: var(--border2); }
-.palmer-side-label { display: grid; grid-template-columns: 1fr 3px 1fr; background: var(--surface2); }
-.palmer-side-label span { text-align: center; font-size: 11px; color: var(--text3); padding: 3px 6px; }
-.palmer-side-label .right { text-align: right; }
-.palmer-side-label .left { text-align: left; }
-.palmer-side-label .div { background: var(--border2); }
+.palmer-side-label { display: flex; justify-content: space-between; padding: 3px 8px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.palmer-side-label span { font-size: 11px; color: var(--text3); }
 .tooth { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-family: var(--mono); font-weight: 500; color: var(--text3); cursor: pointer; transition: all 0.1s; border-right: 1px solid var(--border); }
 .tooth:last-child { border-right: none; }
 .tooth.sel { background: var(--accent); color: #fff; font-weight: 700; }
@@ -129,7 +126,11 @@ tr:hover td { background: var(--bg); }
 .settings-section { margin-bottom: 24px; }
 .settings-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 .settings-list { display: flex; flex-direction: column; gap: 6px; }
-.settings-item { display: flex; align-items: center; gap: 8px; }
+.settings-item { display: flex; align-items: center; gap: 8px; cursor: default; border-radius: var(--radius); transition: background 0.1s; }
+.settings-item.dragging { opacity: 0.4; }
+.settings-item.drag-over { background: var(--accent-bg); outline: 1px dashed var(--accent); }
+.drag-handle { cursor: grab; color: var(--text3); font-size: 16px; padding: 4px; flex-shrink: 0; touch-action: none; line-height: 1; }
+.drag-handle:active { cursor: grabbing; }
 .settings-item input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; background: var(--bg); color: var(--text); font-family: var(--font); outline: none; }
 .settings-item input:focus { border-color: var(--accent); }
 .btn-icon { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; }
@@ -148,7 +149,8 @@ tr:hover td { background: var(--bg); }
 .pg-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 500; }
 .pg-btn:disabled { opacity: 0.35; cursor: default; }
 .pg-btn.nav { padding: 6px 14px; }
-.type-chip { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 13px; color: var(--text2); background: var(--bg); transition: all 0.12s; user-select: none; }
+.type-check-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.type-chip { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 12px; color: var(--text2); background: var(--bg); transition: all 0.12s; user-select: none; white-space: nowrap; }
 .type-chip.sel { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); font-weight: 500; }
 .type-chip:active { opacity: 0.7; }
 tr.row-upcoming td { background: #FFFBEB !important; }
@@ -368,7 +370,7 @@ function buildPalmerChart(containerId) {
   c.innerHTML = `
     <div class="palmer-wrap${primClass}">
       <div class="palmer-side-label">
-        <span class="right">右側</span><span class="div"></span><span class="left">左側</span>
+        <span>右側</span><span>左側</span>
       </div>
       <div class="palmer-labels top" style="grid-template-columns:${gridCols}">${numRow}</div>
       <div class="palmer-jaw-row upper" style="grid-template-columns:${gridCols}">${urRow}<div class="palmer-center-v"></div>${ulRow}</div>
@@ -640,31 +642,108 @@ async function toggleDelivered(id){
   await load();
 }
 
-// Settings
+// Settings with drag-and-drop reordering
 function openSettings(){renderLabList();renderTypeList();document.getElementById('settings-modal').classList.add('open');}
 function closeSettings(){document.getElementById('settings-modal').classList.remove('open');}
-function renderLabList(){
-  document.getElementById('lab-list').innerHTML=labs.map((l,i)=>`
-    <div class="settings-item">
-      <input type="text" value="${l}" id="lab-item-${i}">
-      <button class="btn-icon del" onclick="removeLab(${i})">✕</button>
+
+function renderList(containerId, arr, prefix, removeFn) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = arr.map((v,i) => `
+    <div class="settings-item" draggable="true" data-index="${i}" data-list="${prefix}"
+         ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event,'${prefix}')" ondragend="onDragEnd(event)"
+         ontouchstart="onTouchStart(event,'${prefix}')" ontouchmove="onTouchMove(event)" ontouchend="onTouchEnd(event,'${prefix}')">
+      <span class="drag-handle" title="ドラッグして並び替え">⋮⋮</span>
+      <input type="text" value="${v}" id="${prefix}-item-${i}" style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);font-family:var(--font);outline:none;">
+      <button class="btn-icon del" onclick="${removeFn}(${i})">✕</button>
     </div>`).join('');
 }
-function renderTypeList(){
-  document.getElementById('type-list').innerHTML=types.map((t,i)=>`
-    <div class="settings-item">
-      <input type="text" value="${t}" id="type-item-${i}">
-      <button class="btn-icon del" onclick="removeType(${i})">✕</button>
-    </div>`).join('');
-}
+
+function renderLabList(){ renderList('lab-list', labs, 'lab', 'removeLab'); }
+function renderTypeList(){ renderList('type-list', types, 'type', 'removeType'); }
+
 function addLabItem(){labs.push('新しい技工所');renderLabList();}
 function addTypeItem(){types.push('新しい種類');renderTypeList();}
-function removeLab(i){labs.splice(i,1);renderLabList();}
-function removeType(i){types.splice(i,1);renderTypeList();}
-function saveSettings(){
-  labs=Array.from(document.querySelectorAll('[id^="lab-item-"]')).map(el=>el.value.trim()).filter(Boolean);
-  types=Array.from(document.querySelectorAll('[id^="type-item-"]')).map(el=>el.value.trim()).filter(Boolean);
-  saveSettingsLocal(); initFilters(); closeSettings();
+function removeLab(i){ collectSettings(); labs.splice(i,1); renderLabList(); }
+function removeType(i){ collectSettings(); types.splice(i,1); renderTypeList(); }
+
+function collectSettings() {
+  labs = Array.from(document.querySelectorAll('[id^="lab-item-"]')).map(el=>el.value.trim()).filter(Boolean);
+  types = Array.from(document.querySelectorAll('[id^="type-item-"]')).map(el=>el.value.trim()).filter(Boolean);
+}
+function saveSettings(){ collectSettings(); saveSettingsLocal(); initFilters(); closeSettings(); }
+
+// Drag-and-drop (desktop)
+let dragSrcIndex = null;
+function onDragStart(e) {
+  dragSrcIndex = parseInt(e.currentTarget.dataset.index);
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.settings-item').forEach(el=>el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function onDrop(e, prefix) {
+  e.preventDefault();
+  const toIndex = parseInt(e.currentTarget.dataset.index);
+  if(dragSrcIndex===null || dragSrcIndex===toIndex) return;
+  collectSettings();
+  const arr = prefix==='lab' ? labs : types;
+  const [moved] = arr.splice(dragSrcIndex, 1);
+  arr.splice(toIndex, 0, moved);
+  prefix==='lab' ? renderLabList() : renderTypeList();
+}
+function onDragEnd(e) {
+  dragSrcIndex = null;
+  document.querySelectorAll('.settings-item').forEach(el=>{
+    el.classList.remove('dragging'); el.classList.remove('drag-over');
+  });
+}
+
+// Touch drag (iPad)
+let touchSrcIndex = null, touchListPrefix = null, touchClone = null;
+function onTouchStart(e, prefix) {
+  if(!e.target.classList.contains('drag-handle')) return;
+  touchSrcIndex = parseInt(e.currentTarget.dataset.index);
+  touchListPrefix = prefix;
+  const rect = e.currentTarget.getBoundingClientRect();
+  touchClone = e.currentTarget.cloneNode(true);
+  touchClone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:0.85;z-index:9999;pointer-events:none;background:var(--surface);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
+  document.body.appendChild(touchClone);
+  e.currentTarget.classList.add('dragging');
+}
+function onTouchMove(e) {
+  if(!touchClone) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  touchClone.style.top = (t.clientY - 20) + 'px';
+  touchClone.style.left = touchClone.style.left;
+  document.querySelectorAll('.settings-item').forEach(el=>{
+    el.classList.remove('drag-over');
+    const r = el.getBoundingClientRect();
+    if(t.clientY >= r.top && t.clientY <= r.bottom) el.classList.add('drag-over');
+  });
+}
+function onTouchEnd(e, prefix) {
+  if(!touchClone) return;
+  document.body.removeChild(touchClone); touchClone = null;
+  const overEl = document.querySelector('.settings-item.drag-over');
+  if(overEl) {
+    const toIndex = parseInt(overEl.dataset.index);
+    if(touchSrcIndex !== null && touchSrcIndex !== toIndex) {
+      collectSettings();
+      const arr = prefix==='lab' ? labs : types;
+      const [moved] = arr.splice(touchSrcIndex, 1);
+      arr.splice(toIndex, 0, moved);
+      prefix==='lab' ? renderLabList() : renderTypeList();
+    }
+  }
+  document.querySelectorAll('.settings-item').forEach(el=>{
+    el.classList.remove('dragging'); el.classList.remove('drag-over');
+  });
+  touchSrcIndex = null; touchListPrefix = null;
 }
 
 ['add-modal','edit-modal','settings-modal'].forEach(id=>{
