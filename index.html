@@ -105,6 +105,13 @@ th .sort-icon::after { content: '⇅'; }
 .chk { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border2); background: transparent; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; color: var(--text3); transition: all 0.15s; }
 .chk.done { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn-row { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; color: var(--text2); font-family: var(--font); }
+.btn-log { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; font-size: 13px; cursor: pointer; color: var(--text2); line-height: 1; }
+.btn-log:hover { background: var(--bg); }
+.log-item { display: flex; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.log-item:last-child { border-bottom: none; }
+.log-time { font-size: 11px; color: var(--text3); font-family: var(--mono); white-space: nowrap; min-width: 110px; }
+.log-msg { font-size: 13px; color: var(--text); line-height: 1.5; }
+.log-empty { text-align: center; padding: 2rem; color: var(--text3); font-size: 14px; }
 .empty { text-align: center; padding: 3rem 1rem; color: var(--text3); }
 .empty-icon { font-size: 36px; margin-bottom: 12px; }
 .loading { text-align: center; padding: 3rem; color: var(--text3); }
@@ -356,6 +363,14 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
       <button class="btn-cancel" onclick="closeSettings()">キャンセル</button>
       <button class="btn-save" onclick="saveSettings()">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- Log Modal -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>📋 変更ログ</h2><button class="btn-close" onclick="closeLog()">×</button></div>
+    <div class="modal-body" id="log-body" style="padding:0"></div>
   </div>
 </div>
 
@@ -678,24 +693,34 @@ function render() {
   tbody.innerHTML=paged.map(r=>{
     const st=getStatus(r),[bc,bl]=statusMap[st]||['badge-pending','待ち'];
     const rowClass = st==='overdue' ? 'row-overdue' : st==='upcoming' ? 'row-upcoming' : '';
-    // ④ 補綴物種類にカラーバッジを適用
     const typeBadges = (r.type||'').split('・').filter(Boolean).map(name => {
       const t = types.find(x=>x.name===name);
       const color = t?.color;
       const style = color ? `background:${color}22;border:1px solid ${color};color:${color};padding:2px 7px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;display:inline-block;margin:1px 2px` : '';
       return color ? `<span style="${style}">${name}</span>` : `<span style="font-size:13px">${name}</span>`;
     }).join(' ');
+    const logCount = (r.logs||[]).length;
+    // ① 納品済みの場合は日付を下に表示
+    const statusCell = st==='done'
+      ? `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+           <span class="badge ${bc}">${bl}</span>
+           <span style="font-size:10px;color:var(--text3)">${fmt(r.delivered)}</span>
+         </div>`
+      : `<div style="display:flex;align-items:center;justify-content:center"><span class="badge ${bc}">${bl}</span></div>`;
     return `<tr${rowClass?' class="'+rowClass+'"':''}>
       <td>${fmt(r.date)}</td><td><span class="pat-no">${r.patno||'—'}</span></td>
       <td><span class="pat-name">${r.name||'—'}</span></td>
       <td><span class="teeth-val">${r.teeth||'—'}</span></td>
       <td>${typeBadges||'—'}</td><td>${r.lab||'—'}</td>
       <td>${fmt(r.appt)}</td><td>${fmt(r.eta)}</td>
-      <td style="font-size:13px">${r.doctor||'—'}</td>
-      <td style="font-size:13px">${r.da||'—'}</td>
-      <td style="text-align:center"><span class="badge ${bc}">${bl}</span></td>
-      <td style="text-align:center"><button class="${r.delivered?'chk done':'chk'}" onclick="toggleDelivered('${r.id}')">${r.delivered?'✓':''}</button></td>
-      <td style="text-align:center"><button class="btn-row" onclick="openEdit('${r.id}')">詳細</button></td>
+      <td style="font-size:13px;text-align:center">${r.doctor||'—'}</td>
+      <td style="font-size:13px;text-align:center">${r.da||'—'}</td>
+      <td>${statusCell}</td>
+      <td><div style="display:flex;align-items:center;justify-content:center"><button class="${r.delivered?'chk done':'chk'}" onclick="toggleDelivered('${r.id}')">${r.delivered?'✓':''}</button></div></td>
+      <td><div style="display:flex;align-items:center;justify-content:center;gap:4px">
+        <button class="btn-row" onclick="openEdit('${r.id}')">詳細</button>
+        ${logCount>0?`<button class="btn-log" onclick="openLog('${r.id}')" title="変更ログ(${logCount}件)">📋</button>`:''}
+      </div></td>
     </tr>`;
   }).join('');
 
@@ -807,9 +832,24 @@ async function saveEdit(){
     da:getSelectedPerson('e-da-list'),
     note:document.getElementById('e-note').value.trim()
   };
+  const r = records.find(x=>x.id===editId);
+  const oldStatus = r ? getStatus(r) : '';
   setSyncState('syncing');
   const {error}=await sb.from('records').update(upd).eq('id',editId);
   if(error){setSyncState('error');alert('保存に失敗しました');return;}
+  // ログ記録
+  const changes = [];
+  if(r) {
+    if(upd.appt !== r.appt) changes.push(`予約日変更: ${fmt(r.appt)}→${fmt(upd.appt)}`);
+    if(upd.eta !== r.eta) changes.push(`納品予定日変更: ${fmt(r.eta)}→${fmt(upd.eta)}`);
+    if(upd.lab !== r.lab) changes.push(`技工所変更: ${r.lab}→${upd.lab}`);
+    if(upd.type !== r.type) changes.push(`補綴物変更: ${r.type}→${upd.type}`);
+    if(upd.delivered !== r.delivered) changes.push(upd.delivered ? `納品確認（${upd.delivered}）` : '納品確認を取り消し');
+  }
+  if(changes.length) {
+    const newLogs = addLog(r?.logs, changes.join(' / '));
+    await sb.from('records').update({logs: newLogs}).eq('id', editId);
+  }
   closeEdit(); await load();
 }
 async function deleteRec(){
@@ -819,15 +859,46 @@ async function deleteRec(){
   if(error){setSyncState('error');alert('削除に失敗しました');return;}
   closeEdit(); await load();
 }
+function nowStr() {
+  return new Date().toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function addLog(logs, message) {
+  return [...(logs||[]), {time: nowStr(), msg: message}];
+}
+
 async function toggleDelivered(id){
   const r=records.find(x=>x.id===id); if(!r) return;
+  // ② 取り消し時は確認ダイアログ
+  if(r.delivered) {
+    if(!confirm(`「${r.name}」の納品確認を取り消しますか？`)) return;
+  }
+  const newVal = r.delivered ? '' : today();
+  const msg = newVal ? `納品確認（${newVal}）` : '納品確認を取り消し';
+  const newLogs = addLog(r.logs, msg);
   setSyncState('syncing');
-  const {error}=await sb.from('records').update({delivered:r.delivered?'':today()}).eq('id',id);
+  const {error}=await sb.from('records').update({delivered:newVal, logs:newLogs}).eq('id',id);
   if(error){setSyncState('error');return;}
   await load();
 }
 
-// ===== Settings =====
+function openLog(id) {
+  const r = records.find(x=>x.id===id); if(!r) return;
+  const logs = r.logs||[];
+  const body = document.getElementById('log-body');
+  if(!logs.length) {
+    body.innerHTML = '<div class="log-empty">変更ログはありません</div>';
+  } else {
+    body.innerHTML = [...logs].reverse().map(l =>
+      `<div class="log-item">
+        <div class="log-time">${l.time}</div>
+        <div class="log-msg">${l.msg}</div>
+      </div>`
+    ).join('');
+  }
+  document.querySelector('#log-modal .modal-header h2').textContent = `📋 ${r.name}（${r.patno}）の変更ログ`;
+  document.getElementById('log-modal').classList.add('open');
+}
+function closeLog(){ document.getElementById('log-modal').classList.remove('open'); }
 // ⑤ データはDOMではなくJS配列で管理し、追加・削除・並び替え後も値を保持
 let _editingLabs=[], _editingTypes=[], _editingDoctors=[], _editingDas=[];
 
@@ -1014,7 +1085,7 @@ function onTouchEnd(e){
   touchSrcIndex=null; touchSrcPrefix=null;
 }
 
-['add-modal','edit-modal','settings-modal'].forEach(id=>{
+['add-modal','edit-modal','settings-modal','log-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById(id).classList.remove('open');});
 });
 
