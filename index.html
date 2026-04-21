@@ -73,18 +73,18 @@ table { width: 100%; border-collapse: collapse; min-width: 860px; table-layout: 
 th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; overflow: hidden; }
 td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; }
 /* ② 列幅指定 */
-th:nth-child(1), td:nth-child(1) { width: 54px; }   /* 日付 */
-th:nth-child(2), td:nth-child(2) { width: 64px; }   /* 患者番号 */
-th:nth-child(3), td:nth-child(3) { width: 120px; }  /* 患者名 */
-th:nth-child(4), td:nth-child(4) { width: 80px; }   /* 歯式 */
-th:nth-child(5), td:nth-child(5) { width: 130px; }  /* 技工物 */
+th:nth-child(1), td:nth-child(1) { width: 50px; }   /* 日付 */
+th:nth-child(2), td:nth-child(2) { width: 60px; }   /* 患者番号 */
+th:nth-child(3), td:nth-child(3) { width: 110px; }  /* 患者名 */
+th:nth-child(4), td:nth-child(4) { width: 70px; }   /* 歯式 */
+th:nth-child(5), td:nth-child(5) { width: 160px; overflow: visible; white-space: normal; word-break: break-word; }  /* 技工物 */
 th:nth-child(6), td:nth-child(6) { width: 70px; }   /* 技工所 */
-th:nth-child(7), td:nth-child(7) { width: 54px; }   /* 予約日 */
-th:nth-child(8), td:nth-child(8) { width: 58px; }   /* 納品予定 */
-th:nth-child(9), td:nth-child(9) { width: 58px; }   /* 担当Dr */
-th:nth-child(10), td:nth-child(10) { width: 52px; } /* 担当DA */
-th:nth-child(11), td:nth-child(11) { width: 68px; } /* 状態 */
-th:nth-child(12), td:nth-child(12) { width: 44px; text-align:center; } /* 納品確認 */
+th:nth-child(7), td:nth-child(7) { width: 50px; }   /* 予約日 */
+th:nth-child(8), td:nth-child(8) { width: 54px; }   /* 納品予定 */
+th:nth-child(9), td:nth-child(9) { width: 56px; }   /* 担当Dr */
+th:nth-child(10), td:nth-child(10) { width: 50px; } /* 担当DA */
+th:nth-child(11), td:nth-child(11) { width: 66px; } /* 状態 */
+th:nth-child(12), td:nth-child(12) { width: 60px; text-align:center; } /* 納品確認 */
 th:nth-child(13), td:nth-child(13) { width: 44px; } /* 詳細 */
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg); }
@@ -252,7 +252,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
             <th class="sortable" id="th-appt" onclick="toggleSort('appt')">予約日<span class="sort-icon"></span></th>
             <th class="sortable" id="th-eta" onclick="toggleSort('eta')">納品予定<span class="sort-icon"></span></th>
             <th>担当Dr</th><th>担当DA</th>
-            <th>状態</th><th>納品確認</th><th></th>
+            <th>状態</th><th>納品</th><th></th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -271,7 +271,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
       <div class="form-grid">
         <div class="form-group"><label>日付</label><input type="date" id="f-date"></div>
         <div class="form-group"><label>患者番号 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-patno" placeholder="例: 00123"></div>
-        <div class="form-group full"><label>患者名 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-name" placeholder="カタカナで入力" inputmode="text" autocomplete="off" style="ime-mode:active" oncompositionend="toKatakana(this)"></div>
+        <div class="form-group full"><label>患者名 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-name" placeholder="カタカナで入力" autocomplete="off" oninput="toKatakana(this)"></div>
         <div class="form-group full"><label>技工所</label><div id="f-lab-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="f-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="f-appt"></div>
@@ -307,7 +307,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
       <div class="form-grid">
         <div class="form-group"><label>日付</label><input type="date" id="e-date"></div>
         <div class="form-group"><label>患者番号</label><input type="text" id="e-patno"></div>
-        <div class="form-group full"><label>患者名</label><input type="text" id="e-name"></div>
+        <div class="form-group full"><label>患者名</label><input type="text" id="e-name" autocomplete="off" oninput="toKatakana(this)"></div>
         <div class="form-group full"><label>技工所</label><div id="e-lab-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="e-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="e-appt"></div>
@@ -406,11 +406,23 @@ async function saveSettingsToSupabase() {
   }
 }
 
-// ① ひらがな→カタカナ自動変換
+// ① ひらがな→カタカナ自動変換（IME変換中は除外）
 function toKatakana(el) {
+  if(el._composing) return;
+  const pos = el.selectionStart;
   el.value = el.value.replace(/[\u3041-\u3096]/g, c =>
     String.fromCharCode(c.charCodeAt(0) + 0x60)
   );
+  el.setSelectionRange(pos, pos);
+}
+// IME変換中フラグ管理
+function setupKatakanaInput(id) {
+  const el = document.getElementById(id); if(!el) return;
+  el.addEventListener('compositionstart', () => el._composing = true);
+  el.addEventListener('compositionend', () => {
+    el._composing = false;
+    toKatakana(el);
+  });
 }
 
 let records=[], currentTab='all', editId=null, selTeeth=[];
@@ -728,6 +740,7 @@ function openAdd(){
   document.getElementById('btn-prim').classList.remove('active');
   document.getElementById('teeth-sel-add').textContent='なし';
   document.getElementById('add-modal').classList.add('open');
+  setupKatakanaInput('f-name');
 }
 function closeAdd(){document.getElementById('add-modal').classList.remove('open');}
 
@@ -772,6 +785,7 @@ function openEdit(id){
   document.getElementById('e-teeth').value=r.teeth||'';
   document.getElementById('e-note').value=r.note||'';
   document.getElementById('edit-modal').classList.add('open');
+  setupKatakanaInput('e-name');
 }
 function closeEdit(){document.getElementById('edit-modal').classList.remove('open');}
 
