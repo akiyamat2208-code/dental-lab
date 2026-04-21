@@ -69,9 +69,23 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .toolbar input { flex: 1; min-width: 150px; }
 .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table { width: 100%; border-collapse: collapse; min-width: 780px; }
-th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; }
-td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; min-width: 860px; table-layout: fixed; }
+th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; overflow: hidden; }
+td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; }
+/* ② 列幅指定 */
+th:nth-child(1), td:nth-child(1) { width: 54px; }   /* 日付 */
+th:nth-child(2), td:nth-child(2) { width: 64px; }   /* 患者番号 */
+th:nth-child(3), td:nth-child(3) { width: 120px; }  /* 患者名 */
+th:nth-child(4), td:nth-child(4) { width: 80px; }   /* 歯式 */
+th:nth-child(5), td:nth-child(5) { width: 130px; }  /* 技工物 */
+th:nth-child(6), td:nth-child(6) { width: 70px; }   /* 技工所 */
+th:nth-child(7), td:nth-child(7) { width: 54px; }   /* 予約日 */
+th:nth-child(8), td:nth-child(8) { width: 58px; }   /* 納品予定 */
+th:nth-child(9), td:nth-child(9) { width: 58px; }   /* 担当Dr */
+th:nth-child(10), td:nth-child(10) { width: 52px; } /* 担当DA */
+th:nth-child(11), td:nth-child(11) { width: 68px; } /* 状態 */
+th:nth-child(12), td:nth-child(12) { width: 44px; text-align:center; } /* 納品確認 */
+th:nth-child(13), td:nth-child(13) { width: 44px; } /* 詳細 */
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg); }
 th.sortable { cursor: pointer; user-select: none; }
@@ -257,7 +271,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
       <div class="form-grid">
         <div class="form-group"><label>日付</label><input type="date" id="f-date"></div>
         <div class="form-group"><label>患者番号 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-patno" placeholder="例: 00123"></div>
-        <div class="form-group full"><label>患者名 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-name" placeholder="フリガナまたは漢字"></div>
+        <div class="form-group full"><label>患者名 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-name" placeholder="カタカナで入力" inputmode="text" autocomplete="off" style="ime-mode:active" oncompositionend="toKatakana(this)"></div>
         <div class="form-group full"><label>技工所</label><div id="f-lab-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="f-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="f-appt"></div>
@@ -390,6 +404,13 @@ async function saveSettingsToSupabase() {
   for(const e of entries) {
     await sb.from('settings').upsert(e, {onConflict:'key'});
   }
+}
+
+// ① ひらがな→カタカナ自動変換
+function toKatakana(el) {
+  el.value = el.value.replace(/[\u3041-\u3096]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) + 0x60)
+  );
 }
 
 let records=[], currentTab='all', editId=null, selTeeth=[];
