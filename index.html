@@ -171,8 +171,9 @@ th .sort-icon::after { content: '⇅'; }
 .pg-btn:disabled { opacity: 0.35; cursor: default; }
 .pg-btn.nav { padding: 6px 14px; }
 .type-check-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.type-chip { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 12px; color: var(--text2); background: var(--bg); transition: all 0.12s; user-select: none; white-space: nowrap; }
-.type-chip.sel { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); font-weight: 500; }
+.type-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 12px; color: var(--text2); background: var(--bg); transition: all 0.12s; user-select: none; white-space: nowrap; }
+.type-chip.sel { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.type-chip.sel::before { content: '✓ '; font-size: 11px; }
 .type-chip:active { opacity: 0.7; }
 tr.row-upcoming td { background: #FFFBEB !important; }
 tr.row-overdue td { background: #FEF2F2 !important; }
@@ -525,18 +526,27 @@ function buildTypeChips(containerId, selectedArr) {
   const el = document.getElementById(containerId); if(!el) return;
   el.innerHTML = types.map(t => {
     const sel = selectedArr.includes(t.name);
-    const bg = t.color ? t.color+'22' : '';
-    const border = t.color || 'var(--border)';
-    const textColor = t.color || 'var(--text2)';
-    const selStyle = sel ? `background:${t.color}33;border-color:${t.color};color:${t.color};font-weight:500` : `background:${bg};border-color:${border};color:${textColor}`;
-    return `<div class="type-chip${sel?' sel':''}" style="${selStyle}" data-name="${t.name}" data-color="${t.color||''}" onclick="toggleTypeChip(this,'${containerId}')">${t.name}</div>`;
+    const color = t.color || '';
+    let style = '';
+    if(sel) {
+      style = color
+        ? `background:${color};border-color:${color};color:#fff;font-weight:600`
+        : ''; // CSS .sel クラスで対応
+    } else {
+      style = color ? `background:${color}18;border-color:${color}66;color:${color}` : '';
+    }
+    return `<div class="type-chip${sel?' sel':''}" style="${style}" data-name="${t.name}" data-color="${color}" onclick="toggleTypeChip(this,'${containerId}')">${t.name}</div>`;
   }).join('');
 }
 function toggleTypeChip(el, containerId) {
   const isSel = el.classList.toggle('sel');
   const color = el.dataset.color;
-  if(color) el.style = isSel ? `background:${color}33;border-color:${color};color:${color};font-weight:500` : `background:${color}22;border-color:${color};color:${color}`;
-  else el.style = isSel ? '' : '';
+  if(color) {
+    el.style = isSel
+      ? `background:${color};border-color:${color};color:#fff;font-weight:600`
+      : `background:${color}18;border-color:${color}66;color:${color}`;
+  }
+  // color無しはCSSクラスで制御（何もしない）
 }
 function getSelectedTypes(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} .type-chip.sel`)).map(el=>el.dataset.name);
