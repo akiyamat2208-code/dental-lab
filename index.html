@@ -237,6 +237,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
             <th>技工物</th><th>技工所</th>
             <th class="sortable" id="th-appt" onclick="toggleSort('appt')">予約日<span class="sort-icon"></span></th>
             <th class="sortable" id="th-eta" onclick="toggleSort('eta')">納品予定<span class="sort-icon"></span></th>
+            <th>担当Dr</th><th>担当DA</th>
             <th>状態</th><th>納品確認</th><th></th>
           </tr></thead>
           <tbody id="tbody"></tbody>
@@ -261,8 +262,8 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="f-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="f-appt"></div>
         <div class="form-group"><label>納品予定日</label><input type="date" id="f-eta"></div>
-        <div class="form-group"><label>担当Dr</label><select id="f-doctor"></select></div>
-        <div class="form-group"><label>担当DA</label><select id="f-da"></select></div>
+        <div class="form-group full"><label>担当Dr</label><div id="f-doctor-list" class="type-check-list"></div></div>
+        <div class="form-group full"><label>担当DA</label><div id="f-da-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>指示・備考（任意）</label><textarea id="f-note" placeholder="例: 前装冠、単色など"></textarea></div>
         <div class="form-group full">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -299,8 +300,8 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="form-group"><label>納品予定日</label><input type="date" id="e-eta"></div>
         <div class="form-group"><label>実際の納品日</label><input type="date" id="e-delivered"></div>
         <div class="form-group"><label>歯式</label><input type="text" id="e-teeth" readonly></div>
-        <div class="form-group"><label>担当Dr</label><select id="e-doctor"></select></div>
-        <div class="form-group"><label>担当DA</label><select id="e-da"></select></div>
+        <div class="form-group"><label>担当Dr</label><div id="e-doctor-list" class="type-check-list"></div></div>
+        <div class="form-group"><label>担当DA</label><div id="e-da-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>指示・備考</label><textarea id="e-note"></textarea></div>
       </div>
     </div>
@@ -502,32 +503,47 @@ function setSyncState(s) {
   txt.textContent=s==='syncing'?'同期中...':s==='error'?'エラー':'同期済み';
 }
 function populateSelects() {
-  const setOpts = (id, arr, allowBlank) => {
-    const el = document.getElementById(id); if(!el) return;
-    el.innerHTML = (allowBlank ? '<option value="">（未選択）</option>' : '') + arr.map(x=>x.name?`<option value="${x.name}">${x.name}</option>`:'').join('');
-  };
-  setOpts('f-lab', labs, false);
-  setOpts('e-lab', labs, false);
-  setOpts('f-doctor', doctors, true);
-  setOpts('e-doctor', doctors, true);
-  setOpts('f-da', das, true);
-  setOpts('e-da', das, true);
+  // Dr/DAはチップ形式なので特に何もしない（buildPersonChipsで対応）
 }
+
+// ⑤ 補綴物チップ（色付き）
 function buildTypeChips(containerId, selectedArr) {
   const el = document.getElementById(containerId); if(!el) return;
   el.innerHTML = types.map(t => {
     const sel = selectedArr.includes(t.name);
-    const style = sel ? `background:${t.color}20;border-color:${t.color};color:${t.color}` : '';
-    return `<div class="type-chip${sel?' sel':''}" style="${style}" data-name="${t.name}" data-color="${t.color}" onclick="toggleTypeChip(this,'${containerId}')">${t.name}</div>`;
+    const bg = t.color ? t.color+'22' : '';
+    const border = t.color || 'var(--border)';
+    const textColor = t.color || 'var(--text2)';
+    const selStyle = sel ? `background:${t.color}33;border-color:${t.color};color:${t.color};font-weight:500` : `background:${bg};border-color:${border};color:${textColor}`;
+    return `<div class="type-chip${sel?' sel':''}" style="${selStyle}" data-name="${t.name}" data-color="${t.color||''}" onclick="toggleTypeChip(this,'${containerId}')">${t.name}</div>`;
   }).join('');
 }
 function toggleTypeChip(el, containerId) {
   const isSel = el.classList.toggle('sel');
   const color = el.dataset.color;
-  el.style = isSel ? `background:${color}20;border-color:${color};color:${color}` : '';
+  if(color) el.style = isSel ? `background:${color}33;border-color:${color};color:${color};font-weight:500` : `background:${color}22;border-color:${color};color:${color}`;
+  else el.style = isSel ? '' : '';
 }
 function getSelectedTypes(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} .type-chip.sel`)).map(el=>el.dataset.name);
+}
+
+// ③ Dr/DAチップ（1択）
+function buildPersonChips(containerId, arr, selectedVal) {
+  const el = document.getElementById(containerId); if(!el) return;
+  el.innerHTML = arr.map(p => {
+    const sel = p.name === selectedVal;
+    return `<div class="type-chip${sel?' sel':''}" data-name="${p.name}" onclick="togglePersonChip(this,'${containerId}')">${p.name}</div>`;
+  }).join('');
+}
+function togglePersonChip(el, containerId) {
+  // 1択: 同じコンテナの他を解除
+  document.querySelectorAll(`#${containerId} .type-chip`).forEach(c => { c.classList.remove('sel'); c.style=''; });
+  el.classList.add('sel');
+}
+function getSelectedPerson(containerId) {
+  const sel = document.querySelector(`#${containerId} .type-chip.sel`);
+  return sel ? sel.dataset.name : '';
 }
 async function load() {
   setSyncState('syncing');
@@ -591,14 +607,22 @@ function render() {
   const statusMap={done:['badge-done','納品済み'],overdue:['badge-overdue','遅延'],upcoming:['badge-today','前日／当日'],pending:['badge-pending','待ち']};
   tbody.innerHTML=paged.map(r=>{
     const st=getStatus(r),[bc,bl]=statusMap[st]||['badge-pending','待ち'];
-    // ① 納品済みは取り消し線、② 遅延・前日当日は背景色
-    const rowClass = st==='done' ? 'row-done' : st==='overdue' ? 'row-overdue' : st==='upcoming' ? 'row-upcoming' : '';
+    const rowClass = st==='overdue' ? 'row-overdue' : st==='upcoming' ? 'row-upcoming' : '';
+    // ④ 補綴物種類にカラーバッジを適用
+    const typeBadges = (r.type||'').split('・').filter(Boolean).map(name => {
+      const t = types.find(x=>x.name===name);
+      const color = t?.color;
+      const style = color ? `background:${color}22;border:1px solid ${color};color:${color};padding:2px 7px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;display:inline-block;margin:1px 2px` : '';
+      return color ? `<span style="${style}">${name}</span>` : `<span style="font-size:13px">${name}</span>`;
+    }).join(' ');
     return `<tr${rowClass?' class="'+rowClass+'"':''}>
       <td>${fmt(r.date)}</td><td><span class="pat-no">${r.patno||'—'}</span></td>
       <td><span class="pat-name">${r.name||'—'}</span></td>
       <td><span class="teeth-val">${r.teeth||'—'}</span></td>
-      <td>${r.type||'—'}</td><td>${r.lab||'—'}</td>
+      <td>${typeBadges||'—'}</td><td>${r.lab||'—'}</td>
       <td>${fmt(r.appt)}</td><td>${fmt(r.eta)}</td>
+      <td style="font-size:13px">${r.doctor||'—'}</td>
+      <td style="font-size:13px">${r.da||'—'}</td>
       <td><span class="badge ${bc}">${bl}</span></td>
       <td><button class="${r.delivered?'chk done':'chk'}" onclick="toggleDelivered('${r.id}')">${r.delivered?'✓':''}</button></td>
       <td><button class="btn-row" onclick="openEdit('${r.id}')">詳細</button></td>
@@ -633,8 +657,11 @@ function setTab(tab,el){currentPage=1;currentTab=tab;document.querySelectorAll('
 function openAdd(){
   selTeeth.length=0;
   toothMode='permanent';
-  populateSelects();
+  // lab select
+  const fl=document.getElementById('f-lab'); if(fl) fl.innerHTML=labs.map(l=>`<option value="${l.name}">${l.name}</option>`).join('');
   buildTypeChips('f-type-list',[]);
+  buildPersonChips('f-doctor-list', doctors, '');
+  buildPersonChips('f-da-list', das, '');
   document.getElementById('f-date').value=today();
   ['f-patno','f-name','f-note'].forEach(id=>document.getElementById(id).value='');
   ['f-appt','f-eta'].forEach(id=>document.getElementById(id).value='');
@@ -660,8 +687,8 @@ async function saveNew(){
     teeth:teethToStr(selTeeth),
     appt:document.getElementById('f-appt').value,
     eta:document.getElementById('f-eta').value,
-    doctor:document.getElementById('f-doctor').value,
-    da:document.getElementById('f-da').value,
+    doctor:getSelectedPerson('f-doctor-list'),
+    da:getSelectedPerson('f-da-list'),
     note:document.getElementById('f-note').value.trim(),
     delivered:''
   };
@@ -673,9 +700,12 @@ async function saveNew(){
 
 function openEdit(id){
   editId=id; const r=records.find(x=>x.id===id); if(!r) return;
-  populateSelects();
+  // lab select
+  const el=document.getElementById('e-lab'); if(el) el.innerHTML=labs.map(l=>`<option value="${l.name}">${l.name}</option>`).join('');
   const savedTypes = r.type ? r.type.split('・') : [];
   buildTypeChips('e-type-list', savedTypes);
+  buildPersonChips('e-doctor-list', doctors, r.doctor||'');
+  buildPersonChips('e-da-list', das, r.da||'');
   document.getElementById('e-date').value=r.date||'';
   document.getElementById('e-patno').value=r.patno||'';
   document.getElementById('e-name').value=r.name||'';
@@ -684,8 +714,6 @@ function openEdit(id){
   document.getElementById('e-eta').value=r.eta||'';
   document.getElementById('e-delivered').value=r.delivered||'';
   document.getElementById('e-teeth').value=r.teeth||'';
-  document.getElementById('e-doctor').value=r.doctor||'';
-  document.getElementById('e-da').value=r.da||'';
   document.getElementById('e-note').value=r.note||'';
   document.getElementById('edit-modal').classList.add('open');
 }
@@ -706,8 +734,8 @@ async function saveEdit(){
     eta:document.getElementById('e-eta').value,
     delivered:document.getElementById('e-delivered').value,
     teeth:document.getElementById('e-teeth').value,
-    doctor:document.getElementById('e-doctor').value,
-    da:document.getElementById('e-da').value,
+    doctor:getSelectedPerson('e-doctor-list'),
+    da:getSelectedPerson('e-da-list'),
     note:document.getElementById('e-note').value.trim()
   };
   setSyncState('syncing');
@@ -753,6 +781,7 @@ function renderAllSettingLists(){
 }
 
 function renderSettingList(containerId, arr, prefix){
+  const showColor = (prefix==='lab' || prefix==='type'); // ① Dr/DAは色不要
   const el = document.getElementById(containerId); if(!el) return;
   el.innerHTML = arr.map((item,i) => `
     <div class="settings-item" draggable="true" data-index="${i}" data-prefix="${prefix}"
@@ -760,8 +789,7 @@ function renderSettingList(containerId, arr, prefix){
          ondrop="onDrop(event)" ondragend="onDragEnd(event)"
          ontouchstart="onTouchStart(event)" ontouchmove="onTouchMove(event)" ontouchend="onTouchEnd(event)">
       <span class="drag-handle" title="ドラッグして並び替え">⋮⋮</span>
-      <input type="color" class="color-swatch" value="${item.color||'#4A90D9'}"
-             oninput="updateEditItem('${prefix}',${i},'color',this.value)">
+      ${showColor ? `<input type="color" class="color-swatch" value="${item.color||'#4A90D9'}" oninput="updateEditItem('${prefix}',${i},'color',this.value)">` : ''}
       <input type="text" class="name-input" value="${item.name||''}" placeholder="名前を入力"
              oninput="updateEditItem('${prefix}',${i},'name',this.value)">
       <button class="btn-icon del" onclick="removeEditItem('${prefix}',${i})">✕</button>
