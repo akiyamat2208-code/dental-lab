@@ -151,12 +151,14 @@ th .sort-icon::after { content: '⇅'; }
 .settings-item.drag-over { background: var(--accent-bg); outline: 1px dashed var(--accent); }
 .drag-handle { cursor: grab; color: var(--text3); font-size: 16px; padding: 4px; flex-shrink: 0; touch-action: none; line-height: 1; }
 .drag-handle:active { cursor: grabbing; }
-.settings-item input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; background: var(--bg); color: var(--text); font-family: var(--font); outline: none; }
-.settings-item input:focus { border-color: var(--accent); }
+.settings-item input.name-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; background: var(--bg); color: var(--text); font-family: var(--font); outline: none; }
+.settings-item input.name-input:focus { border-color: var(--accent); }
+.color-swatch { width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border2); cursor: pointer; padding: 0; flex-shrink: 0; }
 .btn-icon { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; }
 .btn-icon.del { border-color: var(--danger-bg); background: var(--danger-bg); color: var(--danger-text); }
 .btn-add-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px dashed var(--border2); border-radius: var(--radius); background: transparent; font-size: 13px; color: var(--text3); cursor: pointer; font-family: var(--font); width: 100%; margin-top: 4px; }
 .btn-add-item:hover { border-color: var(--accent); color: var(--accent); }
+.colored-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 500; }
 .tooth-mode-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .tooth-mode-btn { border: none; background: transparent; padding: 5px 12px; font-size: 12px; font-family: var(--font); color: var(--text2); cursor: pointer; }
 .tooth-mode-btn.active { background: var(--accent); color: #fff; font-weight: 500; }
@@ -259,6 +261,8 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="f-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="f-appt"></div>
         <div class="form-group"><label>納品予定日</label><input type="date" id="f-eta"></div>
+        <div class="form-group"><label>担当Dr</label><select id="f-doctor"></select></div>
+        <div class="form-group"><label>担当DA</label><select id="f-da"></select></div>
         <div class="form-group full"><label>指示・備考（任意）</label><textarea id="f-note" placeholder="例: 前装冠、単色など"></textarea></div>
         <div class="form-group full">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -295,6 +299,8 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="form-group"><label>納品予定日</label><input type="date" id="e-eta"></div>
         <div class="form-group"><label>実際の納品日</label><input type="date" id="e-delivered"></div>
         <div class="form-group"><label>歯式</label><input type="text" id="e-teeth" readonly></div>
+        <div class="form-group"><label>担当Dr</label><select id="e-doctor"></select></div>
+        <div class="form-group"><label>担当DA</label><select id="e-da"></select></div>
         <div class="form-group full"><label>指示・備考</label><textarea id="e-note"></textarea></div>
       </div>
     </div>
@@ -321,6 +327,16 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="settings-list" id="type-list"></div>
         <button class="btn-add-item" onclick="addTypeItem()">＋ 種類を追加</button>
       </div>
+      <div class="settings-section">
+        <h3>担当Dr</h3>
+        <div class="settings-list" id="doctor-list"></div>
+        <button class="btn-add-item" onclick="addDoctorItem()">＋ 担当Drを追加</button>
+      </div>
+      <div class="settings-section">
+        <h3>担当DA</h3>
+        <div class="settings-list" id="da-list"></div>
+        <button class="btn-add-item" onclick="addDAItem()">＋ 担当DAを追加</button>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeSettings()">キャンセル</button>
@@ -335,15 +351,29 @@ const SUPABASE_URL = 'https://hqiieomajoqbihflvlmj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxaWllb21ham9xYmloZmx2bG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyOTQxOTAsImV4cCI6MjA5MTg3MDE5MH0.rOmxvuh-zM4afFOwJYWTpv2mBCPQiCDcjEJs6sAg0hI';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const SETTINGS_KEY = 'dental_settings_v1';
-let labs = ['和田精密','PMラボ','YUWA','愛歯'];
-let types = ['Br（ブリッジ）','Cr（クラウン）','FD（総義歯）','PD（部分義歯）','Tec（テック）','Inlay','ジルコニア','セラミック','その他'];
+const SETTINGS_KEY = 'dental_settings_v2';
+// 各項目は {name, color} オブジェクト。colorはhex文字列
+let labs  = [{name:'和田精密',color:'#4A90D9'},{name:'PMラボ',color:'#7B68EE'},{name:'YUWA',color:'#50C878'},{name:'愛歯',color:'#FF8C69'}];
+let types = [{name:'Br（ブリッジ）',color:'#4A90D9'},{name:'Cr（クラウン）',color:'#9B59B6'},{name:'FD（総義歯）',color:'#E67E22'},{name:'PD（部分義歯）',color:'#E74C3C'},{name:'Tec（テック）',color:'#27AE60'},{name:'Inlay',color:'#16A085'},{name:'ジルコニア',color:'#2980B9'},{name:'セラミック',color:'#8E44AD'},{name:'その他',color:'#95A5A6'}];
+let doctors = [{name:'',color:'#4A90D9'}];
+let das     = [{name:'',color:'#50C878'}];
 
 function loadSettings() {
-  try { const s=localStorage.getItem(SETTINGS_KEY); if(s){const p=JSON.parse(s);labs=p.labs||labs;types=p.types||types;} } catch(e){}
+  try {
+    const s = localStorage.getItem(SETTINGS_KEY);
+    if(s) {
+      const p = JSON.parse(s);
+      // 旧形式(string配列)との互換性
+      const toObj = (arr, defColor) => arr.map(x => typeof x==='string' ? {name:x,color:defColor} : x);
+      if(p.labs)    labs    = toObj(p.labs,    '#4A90D9');
+      if(p.types)   types   = toObj(p.types,   '#4A90D9');
+      if(p.doctors) doctors = toObj(p.doctors, '#4A90D9');
+      if(p.das)     das     = toObj(p.das,     '#50C878');
+    }
+  } catch(e){}
 }
 function saveSettingsLocal() {
-  try { localStorage.setItem(SETTINGS_KEY,JSON.stringify({labs,types})); } catch(e){}
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({labs,types,doctors,das})); } catch(e){}
 }
 
 let records=[], currentTab='all', editId=null, selTeeth=[];
@@ -472,21 +502,32 @@ function setSyncState(s) {
   txt.textContent=s==='syncing'?'同期中...':s==='error'?'エラー':'同期済み';
 }
 function populateSelects() {
-  ['f-lab','e-lab'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=labs.map(l=>`<option>${l}</option>`).join('');});
+  const setOpts = (id, arr, allowBlank) => {
+    const el = document.getElementById(id); if(!el) return;
+    el.innerHTML = (allowBlank ? '<option value="">（未選択）</option>' : '') + arr.map(x=>x.name?`<option value="${x.name}">${x.name}</option>`:'').join('');
+  };
+  setOpts('f-lab', labs, false);
+  setOpts('e-lab', labs, false);
+  setOpts('f-doctor', doctors, true);
+  setOpts('e-doctor', doctors, true);
+  setOpts('f-da', das, true);
+  setOpts('e-da', das, true);
 }
 function buildTypeChips(containerId, selectedArr) {
-  const el = document.getElementById(containerId);
-  if(!el) return;
+  const el = document.getElementById(containerId); if(!el) return;
   el.innerHTML = types.map(t => {
-    const sel = selectedArr.includes(t) ? ' sel' : '';
-    return `<div class="type-chip${sel}" onclick="toggleTypeChip('${containerId}','${t}',this)">${t}</div>`;
+    const sel = selectedArr.includes(t.name);
+    const style = sel ? `background:${t.color}20;border-color:${t.color};color:${t.color}` : '';
+    return `<div class="type-chip${sel?' sel':''}" style="${style}" data-name="${t.name}" data-color="${t.color}" onclick="toggleTypeChip(this,'${containerId}')">${t.name}</div>`;
   }).join('');
 }
-function toggleTypeChip(containerId, t, el) {
-  el.classList.toggle('sel');
+function toggleTypeChip(el, containerId) {
+  const isSel = el.classList.toggle('sel');
+  const color = el.dataset.color;
+  el.style = isSel ? `background:${color}20;border-color:${color};color:${color}` : '';
 }
 function getSelectedTypes(containerId) {
-  return Array.from(document.querySelectorAll(`#${containerId} .type-chip.sel`)).map(el=>el.textContent);
+  return Array.from(document.querySelectorAll(`#${containerId} .type-chip.sel`)).map(el=>el.dataset.name);
 }
 async function load() {
   setSyncState('syncing');
@@ -501,9 +542,9 @@ async function load() {
 function initFilters() {
   const fl=document.getElementById('flab'),ft=document.getElementById('ftype');
   const lv=fl.value,tv=ft.value;
-  fl.innerHTML='<option value="">すべての技工所</option>'+labs.map(l=>`<option>${l}</option>`).join('');
-  ft.innerHTML='<option value="">すべての種類</option>'+types.map(t=>`<option>${t}</option>`).join('');
-  fl.value=lv;ft.value=tv;
+  fl.innerHTML='<option value="">すべての技工所</option>'+labs.map(l=>`<option value="${l.name}">${l.name}</option>`).join('');
+  ft.innerHTML='<option value="">すべての種類</option>'+types.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  fl.value=lv; ft.value=tv;
 }
 function render() {
   const t=today();
@@ -613,11 +654,14 @@ async function saveNew(){
   const selectedTypes=getSelectedTypes('f-type-list');
   const rec={
     date:document.getElementById('f-date').value,
-    patno, name, lab:document.getElementById('f-lab').value,
+    patno, name,
+    lab:document.getElementById('f-lab').value,
     type:selectedTypes.join('・'),
     teeth:teethToStr(selTeeth),
     appt:document.getElementById('f-appt').value,
     eta:document.getElementById('f-eta').value,
+    doctor:document.getElementById('f-doctor').value,
+    da:document.getElementById('f-da').value,
     note:document.getElementById('f-note').value.trim(),
     delivered:''
   };
@@ -635,11 +679,13 @@ function openEdit(id){
   document.getElementById('e-date').value=r.date||'';
   document.getElementById('e-patno').value=r.patno||'';
   document.getElementById('e-name').value=r.name||'';
-  document.getElementById('e-lab').value=r.lab||labs[0];
+  document.getElementById('e-lab').value=r.lab||labs[0]?.name||'';
   document.getElementById('e-appt').value=r.appt||'';
   document.getElementById('e-eta').value=r.eta||'';
   document.getElementById('e-delivered').value=r.delivered||'';
   document.getElementById('e-teeth').value=r.teeth||'';
+  document.getElementById('e-doctor').value=r.doctor||'';
+  document.getElementById('e-da').value=r.da||'';
   document.getElementById('e-note').value=r.note||'';
   document.getElementById('edit-modal').classList.add('open');
 }
@@ -660,6 +706,8 @@ async function saveEdit(){
     eta:document.getElementById('e-eta').value,
     delivered:document.getElementById('e-delivered').value,
     teeth:document.getElementById('e-teeth').value,
+    doctor:document.getElementById('e-doctor').value,
+    da:document.getElementById('e-da').value,
     note:document.getElementById('e-note').value.trim()
   };
   setSyncState('syncing');
@@ -682,108 +730,130 @@ async function toggleDelivered(id){
   await load();
 }
 
-// Settings with drag-and-drop reordering
-function openSettings(){renderLabList();renderTypeList();document.getElementById('settings-modal').classList.add('open');}
+// ===== Settings =====
+// ⑤ データはDOMではなくJS配列で管理し、追加・削除・並び替え後も値を保持
+let _editingLabs=[], _editingTypes=[], _editingDoctors=[], _editingDas=[];
+
+function openSettings(){
+  // 現在の設定をディープコピーして編集用配列に
+  _editingLabs    = labs.map(x=>({...x}));
+  _editingTypes   = types.map(x=>({...x}));
+  _editingDoctors = doctors.map(x=>({...x}));
+  _editingDas     = das.map(x=>({...x}));
+  renderAllSettingLists();
+  document.getElementById('settings-modal').classList.add('open');
+}
 function closeSettings(){document.getElementById('settings-modal').classList.remove('open');}
 
-function renderList(containerId, arr, prefix, removeFn) {
-  const el = document.getElementById(containerId);
-  el.innerHTML = arr.map((v,i) => `
-    <div class="settings-item" draggable="true" data-index="${i}" data-list="${prefix}"
-         ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event,'${prefix}')" ondragend="onDragEnd(event)"
-         ontouchstart="onTouchStart(event,'${prefix}')" ontouchmove="onTouchMove(event)" ontouchend="onTouchEnd(event,'${prefix}')">
+function renderAllSettingLists(){
+  renderSettingList('lab-list',    _editingLabs,    'lab');
+  renderSettingList('type-list',   _editingTypes,   'type');
+  renderSettingList('doctor-list', _editingDoctors, 'doctor');
+  renderSettingList('da-list',     _editingDas,     'da');
+}
+
+function renderSettingList(containerId, arr, prefix){
+  const el = document.getElementById(containerId); if(!el) return;
+  el.innerHTML = arr.map((item,i) => `
+    <div class="settings-item" draggable="true" data-index="${i}" data-prefix="${prefix}"
+         ondragstart="onDragStart(event)" ondragover="onDragOver(event)"
+         ondrop="onDrop(event)" ondragend="onDragEnd(event)"
+         ontouchstart="onTouchStart(event)" ontouchmove="onTouchMove(event)" ontouchend="onTouchEnd(event)">
       <span class="drag-handle" title="ドラッグして並び替え">⋮⋮</span>
-      <input type="text" value="${v}" id="${prefix}-item-${i}" style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);font-family:var(--font);outline:none;">
-      <button class="btn-icon del" onclick="${removeFn}(${i})">✕</button>
+      <input type="color" class="color-swatch" value="${item.color||'#4A90D9'}"
+             oninput="updateEditItem('${prefix}',${i},'color',this.value)">
+      <input type="text" class="name-input" value="${item.name||''}" placeholder="名前を入力"
+             oninput="updateEditItem('${prefix}',${i},'name',this.value)">
+      <button class="btn-icon del" onclick="removeEditItem('${prefix}',${i})">✕</button>
     </div>`).join('');
 }
 
-function renderLabList(){ renderList('lab-list', labs, 'lab', 'removeLab'); }
-function renderTypeList(){ renderList('type-list', types, 'type', 'removeType'); }
-
-function addLabItem(){labs.push('新しい技工所');renderLabList();}
-function addTypeItem(){types.push('新しい種類');renderTypeList();}
-function removeLab(i){ collectSettings(); labs.splice(i,1); renderLabList(); }
-function removeType(i){ collectSettings(); types.splice(i,1); renderTypeList(); }
-
-function collectSettings() {
-  labs = Array.from(document.querySelectorAll('[id^="lab-item-"]')).map(el=>el.value.trim()).filter(Boolean);
-  types = Array.from(document.querySelectorAll('[id^="type-item-"]')).map(el=>el.value.trim()).filter(Boolean);
+function getEditArr(prefix){
+  return prefix==='lab'?_editingLabs:prefix==='type'?_editingTypes:prefix==='doctor'?_editingDoctors:_editingDas;
 }
-function saveSettings(){ collectSettings(); saveSettingsLocal(); initFilters(); closeSettings(); }
+function updateEditItem(prefix,i,key,val){
+  const arr=getEditArr(prefix); if(arr[i]) arr[i][key]=val;
+}
+function removeEditItem(prefix,i){
+  getEditArr(prefix).splice(i,1);
+  renderSettingList(prefix+'-list', getEditArr(prefix), prefix);
+}
+function addLabItem()   { _editingLabs.push({name:'',color:'#4A90D9'});    renderSettingList('lab-list',    _editingLabs,    'lab'); }
+function addTypeItem()  { _editingTypes.push({name:'',color:'#4A90D9'});   renderSettingList('type-list',   _editingTypes,   'type'); }
+function addDoctorItem(){ _editingDoctors.push({name:'',color:'#4A90D9'}); renderSettingList('doctor-list', _editingDoctors, 'doctor'); }
+function addDAItem()    { _editingDas.push({name:'',color:'#50C878'});     renderSettingList('da-list',     _editingDas,     'da'); }
+
+function saveSettings(){
+  labs    = _editingLabs.filter(x=>x.name.trim());
+  types   = _editingTypes.filter(x=>x.name.trim());
+  doctors = _editingDoctors.filter(x=>x.name.trim());
+  das     = _editingDas.filter(x=>x.name.trim());
+  saveSettingsLocal(); initFilters(); closeSettings();
+}
 
 // Drag-and-drop (desktop)
-let dragSrcIndex = null;
-function onDragStart(e) {
-  dragSrcIndex = parseInt(e.currentTarget.dataset.index);
+let dragSrcIndex=null, dragSrcPrefix=null;
+function onDragStart(e){
+  dragSrcIndex  = parseInt(e.currentTarget.dataset.index);
+  dragSrcPrefix = e.currentTarget.dataset.prefix;
   e.currentTarget.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.effectAllowed='move';
 }
-function onDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
+function onDragOver(e){
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
   document.querySelectorAll('.settings-item').forEach(el=>el.classList.remove('drag-over'));
   e.currentTarget.classList.add('drag-over');
 }
-function onDrop(e, prefix) {
+function onDrop(e){
   e.preventDefault();
-  const toIndex = parseInt(e.currentTarget.dataset.index);
-  if(dragSrcIndex===null || dragSrcIndex===toIndex) return;
-  collectSettings();
-  const arr = prefix==='lab' ? labs : types;
-  const [moved] = arr.splice(dragSrcIndex, 1);
-  arr.splice(toIndex, 0, moved);
-  prefix==='lab' ? renderLabList() : renderTypeList();
+  const toIndex  = parseInt(e.currentTarget.dataset.index);
+  const toPrefix = e.currentTarget.dataset.prefix;
+  if(dragSrcIndex===null||dragSrcPrefix!==toPrefix||dragSrcIndex===toIndex) return;
+  const arr=getEditArr(toPrefix);
+  const [moved]=arr.splice(dragSrcIndex,1); arr.splice(toIndex,0,moved);
+  renderSettingList(toPrefix+'-list', arr, toPrefix);
 }
-function onDragEnd(e) {
-  dragSrcIndex = null;
-  document.querySelectorAll('.settings-item').forEach(el=>{
-    el.classList.remove('dragging'); el.classList.remove('drag-over');
-  });
+function onDragEnd(e){
+  dragSrcIndex=null; dragSrcPrefix=null;
+  document.querySelectorAll('.settings-item').forEach(el=>{el.classList.remove('dragging');el.classList.remove('drag-over');});
 }
 
 // Touch drag (iPad)
-let touchSrcIndex = null, touchListPrefix = null, touchClone = null;
-function onTouchStart(e, prefix) {
+let touchSrcIndex=null, touchSrcPrefix=null, touchClone=null;
+function onTouchStart(e){
   if(!e.target.classList.contains('drag-handle')) return;
-  touchSrcIndex = parseInt(e.currentTarget.dataset.index);
-  touchListPrefix = prefix;
-  const rect = e.currentTarget.getBoundingClientRect();
-  touchClone = e.currentTarget.cloneNode(true);
-  touchClone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:0.85;z-index:9999;pointer-events:none;background:var(--surface);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
+  touchSrcIndex  = parseInt(e.currentTarget.dataset.index);
+  touchSrcPrefix = e.currentTarget.dataset.prefix;
+  const rect=e.currentTarget.getBoundingClientRect();
+  touchClone=e.currentTarget.cloneNode(true);
+  touchClone.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:0.85;z-index:9999;pointer-events:none;background:var(--surface);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,0.15);`;
   document.body.appendChild(touchClone);
   e.currentTarget.classList.add('dragging');
 }
-function onTouchMove(e) {
-  if(!touchClone) return;
-  e.preventDefault();
-  const t = e.touches[0];
-  touchClone.style.top = (t.clientY - 20) + 'px';
-  touchClone.style.left = touchClone.style.left;
+function onTouchMove(e){
+  if(!touchClone) return; e.preventDefault();
+  const t=e.touches[0];
+  touchClone.style.top=(t.clientY-20)+'px';
   document.querySelectorAll('.settings-item').forEach(el=>{
     el.classList.remove('drag-over');
-    const r = el.getBoundingClientRect();
-    if(t.clientY >= r.top && t.clientY <= r.bottom) el.classList.add('drag-over');
+    const r=el.getBoundingClientRect();
+    if(t.clientY>=r.top&&t.clientY<=r.bottom) el.classList.add('drag-over');
   });
 }
-function onTouchEnd(e, prefix) {
+function onTouchEnd(e){
   if(!touchClone) return;
-  document.body.removeChild(touchClone); touchClone = null;
-  const overEl = document.querySelector('.settings-item.drag-over');
-  if(overEl) {
-    const toIndex = parseInt(overEl.dataset.index);
-    if(touchSrcIndex !== null && touchSrcIndex !== toIndex) {
-      collectSettings();
-      const arr = prefix==='lab' ? labs : types;
-      const [moved] = arr.splice(touchSrcIndex, 1);
-      arr.splice(toIndex, 0, moved);
-      prefix==='lab' ? renderLabList() : renderTypeList();
+  document.body.removeChild(touchClone); touchClone=null;
+  const overEl=document.querySelector('.settings-item.drag-over');
+  if(overEl){
+    const toIndex=parseInt(overEl.dataset.index), toPrefix=overEl.dataset.prefix;
+    if(touchSrcPrefix===toPrefix&&touchSrcIndex!==toIndex){
+      const arr=getEditArr(toPrefix);
+      const [moved]=arr.splice(touchSrcIndex,1); arr.splice(toIndex,0,moved);
+      renderSettingList(toPrefix+'-list',arr,toPrefix);
     }
   }
-  document.querySelectorAll('.settings-item').forEach(el=>{
-    el.classList.remove('dragging'); el.classList.remove('drag-over');
-  });
-  touchSrcIndex = null; touchListPrefix = null;
+  document.querySelectorAll('.settings-item').forEach(el=>{el.classList.remove('dragging');el.classList.remove('drag-over');});
+  touchSrcIndex=null; touchSrcPrefix=null;
 }
 
 ['add-modal','edit-modal','settings-modal'].forEach(id=>{
