@@ -257,7 +257,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="form-group"><label>日付</label><input type="date" id="f-date"></div>
         <div class="form-group"><label>患者番号 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-patno" placeholder="例: 00123"></div>
         <div class="form-group full"><label>患者名 <span style="color:var(--danger);font-size:11px">必須</span></label><input type="text" id="f-name" placeholder="フリガナまたは漢字"></div>
-        <div class="form-group"><label>技工所</label><select id="f-lab"></select></div>
+        <div class="form-group full"><label>技工所</label><div id="f-lab-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="f-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="f-appt"></div>
         <div class="form-group"><label>納品予定日</label><input type="date" id="f-eta"></div>
@@ -293,7 +293,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
         <div class="form-group"><label>日付</label><input type="date" id="e-date"></div>
         <div class="form-group"><label>患者番号</label><input type="text" id="e-patno"></div>
         <div class="form-group full"><label>患者名</label><input type="text" id="e-name"></div>
-        <div class="form-group"><label>技工所</label><select id="e-lab"></select></div>
+        <div class="form-group full"><label>技工所</label><div id="e-lab-list" class="type-check-list"></div></div>
         <div class="form-group full"><label>補綴物種類（複数選択可）</label><div id="e-type-list" class="type-check-list"></div></div>
         <div class="form-group"><label>予約日</label><input type="date" id="e-appt"></div>
         <div class="form-group"><label>納品予定日</label><input type="date" id="e-eta"></div>
@@ -542,7 +542,15 @@ function getSelectedTypes(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} .type-chip.sel`)).map(el=>el.dataset.name);
 }
 
-// ③ Dr/DAチップ（1択）
+// ラボチップ（1択）
+function buildLabChips(containerId, selectedVal) {
+  const el = document.getElementById(containerId); if(!el) return;
+  if(!labs.length) { el.innerHTML=`<span style="font-size:12px;color:var(--text3)">設定から追加してください</span>`; return; }
+  el.innerHTML = labs.map(l => {
+    const sel = l.name === selectedVal;
+    return `<div class="type-chip${sel?' sel':''}" data-name="${l.name}" onclick="togglePersonChip(this,'${containerId}')">${l.name}</div>`;
+  }).join('');
+}
 function buildPersonChips(containerId, arr, selectedVal) {
   const el = document.getElementById(containerId); if(!el) return;
   const validArr = arr.filter(p => p.name && p.name.trim());
@@ -677,8 +685,7 @@ function setTab(tab,el){currentPage=1;currentTab=tab;document.querySelectorAll('
 function openAdd(){
   selTeeth.length=0;
   toothMode='permanent';
-  // lab select
-  const fl=document.getElementById('f-lab'); if(fl) fl.innerHTML=labs.map(l=>`<option value="${l.name}">${l.name}</option>`).join('');
+  buildLabChips('f-lab-list', labs[0]?.name||'');
   buildTypeChips('f-type-list',[]);
   buildPersonChips('f-doctor-list', doctors, '');
   buildPersonChips('f-da-list', das, '');
@@ -702,7 +709,7 @@ async function saveNew(){
   const rec={
     date:document.getElementById('f-date').value,
     patno, name,
-    lab:document.getElementById('f-lab').value,
+    lab:getSelectedPerson('f-lab-list'),
     type:selectedTypes.join('・'),
     teeth:teethToStr(selTeeth),
     appt:document.getElementById('f-appt').value,
@@ -720,8 +727,7 @@ async function saveNew(){
 
 function openEdit(id){
   editId=id; const r=records.find(x=>x.id===id); if(!r) return;
-  // lab select
-  const el=document.getElementById('e-lab'); if(el) el.innerHTML=labs.map(l=>`<option value="${l.name}">${l.name}</option>`).join('');
+  buildLabChips('e-lab-list', r.lab||'');
   const savedTypes = r.type ? r.type.split('・') : [];
   buildTypeChips('e-type-list', savedTypes);
   buildPersonChips('e-doctor-list', doctors, r.doctor||'');
@@ -729,7 +735,6 @@ function openEdit(id){
   document.getElementById('e-date').value=r.date||'';
   document.getElementById('e-patno').value=r.patno||'';
   document.getElementById('e-name').value=r.name||'';
-  document.getElementById('e-lab').value=r.lab||labs[0]?.name||'';
   document.getElementById('e-appt').value=r.appt||'';
   document.getElementById('e-eta').value=r.eta||'';
   document.getElementById('e-delivered').value=r.delivered||'';
@@ -748,7 +753,7 @@ async function saveEdit(){
   const upd={
     date:document.getElementById('e-date').value,
     patno, name,
-    lab:document.getElementById('e-lab').value,
+    lab:getSelectedPerson('e-lab-list'),
     type:selectedTypes.join('・'),
     appt:document.getElementById('e-appt').value,
     eta:document.getElementById('e-eta').value,
