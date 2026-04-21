@@ -783,20 +783,26 @@ function renderAllSettingLists(){
 }
 
 function renderSettingList(containerId, arr, prefix){
-  const showColor = (prefix==='type'); // ① labは色なし、Dr/DAも色なし
+  const showColor = (prefix==='type');
   const el = document.getElementById(containerId); if(!el) return;
   el.innerHTML = arr.map((item,i) => {
-    const colorBtns = showColor ? `
-      <div style="display:flex;gap:3px;align-items:center;flex-shrink:0">
-        ${COLOR_PRESETS.map((c,ci) => {
-          const active = (item.color||'') === c;
-          const bg = c || '#E8E6DF';
-          const border = active ? '#333' : 'transparent';
-          const label = COLOR_LABELS[ci];
-          return `<button title="${label}" onclick="updateEditItem('${prefix}',${i},'color','${c}');renderSettingList('${prefix}-list',getEditArr('${prefix}'),'${prefix}')"
-            style="width:22px;height:22px;border-radius:50%;background:${bg};border:2px solid ${border};cursor:pointer;flex-shrink:0;padding:0"
-          ></button>`;
-        }).join('')}
+    const currentColor = item.color || '';
+    const swatchBg = currentColor || '#E8E6DF';
+    const colorPicker = showColor ? `
+      <div style="position:relative;flex-shrink:0">
+        <button title="色を変更" onclick="toggleColorPicker('cp-${prefix}-${i}')"
+          style="width:24px;height:24px;border-radius:50%;background:${swatchBg};border:1.5px solid var(--border2);cursor:pointer;padding:0;flex-shrink:0;display:block"></button>
+        <div id="cp-${prefix}-${i}" style="display:none;position:absolute;left:0;top:30px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.12);display:none">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">色を選択</div>
+          <div style="display:flex;gap:5px">
+            ${COLOR_PRESETS.map((c,ci) => {
+              const active = currentColor === c;
+              const bg = c || '#E8E6DF';
+              return `<button title="${COLOR_LABELS[ci]}" onclick="setItemColor('${prefix}',${i},'${c}','cp-${prefix}-${i}')"
+                style="width:26px;height:26px;border-radius:50%;background:${bg};border:${active?'2.5px solid #333':'1.5px solid var(--border2)'};cursor:pointer;padding:0"></button>`;
+            }).join('')}
+          </div>
+        </div>
       </div>` : '';
     return `
     <div class="settings-item" draggable="true" data-index="${i}" data-prefix="${prefix}"
@@ -804,12 +810,28 @@ function renderSettingList(containerId, arr, prefix){
          ondrop="onDrop(event)" ondragend="onDragEnd(event)"
          ontouchstart="onTouchStart(event)" ontouchmove="onTouchMove(event)" ontouchend="onTouchEnd(event)">
       <span class="drag-handle" title="ドラッグして並び替え">⋮⋮</span>
-      ${colorBtns}
+      ${colorPicker}
       <input type="text" class="name-input" value="${item.name||''}" placeholder="名前を入力"
-             oninput="updateEditItem('${prefix}',${i},'name',this.value)">
+             oninput="updateEditItem('${prefix}',${i},'name',this.value)"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();addSettingItem('${prefix}');}">
       <button class="btn-icon del" onclick="removeEditItem('${prefix}',${i})">✕</button>
     </div>`;
   }).join('');
+}
+
+function toggleColorPicker(id) {
+  const el = document.getElementById(id); if(!el) return;
+  const isOpen = el.style.display === 'flex';
+  // 他を全部閉じる
+  document.querySelectorAll('[id^="cp-"]').forEach(e => e.style.display='none');
+  el.style.display = isOpen ? 'none' : 'flex';
+  el.style.flexDirection = 'column';
+}
+
+function setItemColor(prefix, i, color, pickerId) {
+  updateEditItem(prefix, i, 'color', color);
+  document.getElementById(pickerId).style.display='none';
+  renderSettingList(prefix+'-list', getEditArr(prefix), prefix);
 }
 
 function getEditArr(prefix){
@@ -822,10 +844,19 @@ function removeEditItem(prefix,i){
   getEditArr(prefix).splice(i,1);
   renderSettingList(prefix+'-list', getEditArr(prefix), prefix);
 }
-function addLabItem()   { _editingLabs.push({name:''});             renderSettingList('lab-list',    _editingLabs,    'lab'); }
-function addTypeItem()  { _editingTypes.push({name:'',color:''});   renderSettingList('type-list',   _editingTypes,   'type'); }
-function addDoctorItem(){ _editingDoctors.push({name:''});          renderSettingList('doctor-list', _editingDoctors, 'doctor'); }
-function addDAItem()    { _editingDas.push({name:''});              renderSettingList('da-list',     _editingDas,     'da'); }
+function addLabItem()   { _editingLabs.push({name:''});             renderSettingList('lab-list',    _editingLabs,    'lab');    focusLastInput('lab-list'); }
+function addTypeItem()  { _editingTypes.push({name:'',color:''});   renderSettingList('type-list',   _editingTypes,   'type');   focusLastInput('type-list'); }
+function addDoctorItem(){ _editingDoctors.push({name:''});          renderSettingList('doctor-list', _editingDoctors, 'doctor'); focusLastInput('doctor-list'); }
+function addDAItem()    { _editingDas.push({name:''});              renderSettingList('da-list',     _editingDas,     'da');     focusLastInput('da-list'); }
+
+function addSettingItem(prefix){
+  const map = {lab:addLabItem, type:addTypeItem, doctor:addDoctorItem, da:addDAItem};
+  if(map[prefix]) map[prefix]();
+}
+function focusLastInput(containerId){
+  const inputs = document.querySelectorAll(`#${containerId} .name-input`);
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
 
 function saveSettings(){
   labs    = _editingLabs.filter(x=>x.name.trim());
