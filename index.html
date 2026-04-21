@@ -71,21 +71,20 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; min-width: 1000px; table-layout: fixed; }
 th { text-align: center; padding: 10px 8px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; overflow: hidden; }
-td { padding: 11px 8px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; text-align: center; }
-/* ② 列幅指定 */
-th:nth-child(1), td:nth-child(1) { width: 50px; }   /* 日付 */
-th:nth-child(2), td:nth-child(2) { width: 60px; }   /* 患者番号 */
-th:nth-child(3), td:nth-child(3) { width: 110px; text-align: left; }  /* 患者名 */
-th:nth-child(4), td:nth-child(4) { width: 70px; }   /* 歯式 */
-th:nth-child(5), td:nth-child(5) { width: 160px; overflow: visible; white-space: normal; word-break: break-word; }  /* 技工物 */
-th:nth-child(6), td:nth-child(6) { width: 70px; }   /* 技工所 */
-th:nth-child(7), td:nth-child(7) { width: 50px; }   /* 予約日 */
-th:nth-child(8), td:nth-child(8) { width: 54px; }   /* 納品予定 */
-th:nth-child(9), td:nth-child(9) { width: 56px; }   /* 担当Dr */
-th:nth-child(10), td:nth-child(10) { width: 50px; } /* 担当DA */
-th:nth-child(11), td:nth-child(11) { width: 66px; } /* 状態 */
-th:nth-child(12), td:nth-child(12) { width: 60px; text-align:center; } /* 納品確認 */
-th:nth-child(13), td:nth-child(13) { width: 44px; } /* 詳細 */
+td { padding: 11px 8px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; text-align: left; }
+th:nth-child(1), td:nth-child(1) { width: 50px; text-align: center; }   /* 日付 */
+th:nth-child(2), td:nth-child(2) { width: 60px; text-align: center; }   /* 患者番号 */
+th:nth-child(3), td:nth-child(3) { width: 110px; text-align: left; }    /* 患者名 */
+th:nth-child(4), td:nth-child(4) { width: 70px; text-align: left; }     /* 歯式 */
+th:nth-child(5), td:nth-child(5) { width: 160px; overflow: visible; white-space: normal; word-break: break-word; text-align: left; }  /* 技工物 */
+th:nth-child(6), td:nth-child(6) { width: 70px; text-align: center; }   /* 技工所 */
+th:nth-child(7), td:nth-child(7) { width: 50px; text-align: center; }   /* 予約日 */
+th:nth-child(8), td:nth-child(8) { width: 54px; text-align: center; }   /* 納品予定 */
+th:nth-child(9), td:nth-child(9) { width: 56px; text-align: center; }   /* 担当Dr */
+th:nth-child(10), td:nth-child(10) { width: 50px; text-align: center; } /* 担当DA */
+th:nth-child(11), td:nth-child(11) { width: 66px; text-align: center; } /* 状態 */
+th:nth-child(12), td:nth-child(12) { width: 60px; text-align: center; } /* 納品 */
+th:nth-child(13), td:nth-child(13) { width: 44px; text-align: center; } /* 詳細 */
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg); }
 th.sortable { cursor: pointer; user-select: none; }
@@ -694,9 +693,9 @@ function render() {
       <td>${fmt(r.appt)}</td><td>${fmt(r.eta)}</td>
       <td style="font-size:13px">${r.doctor||'—'}</td>
       <td style="font-size:13px">${r.da||'—'}</td>
-      <td><span class="badge ${bc}">${bl}</span></td>
-      <td><button class="${r.delivered?'chk done':'chk'}" onclick="toggleDelivered('${r.id}')">${r.delivered?'✓':''}</button></td>
-      <td><button class="btn-row" onclick="openEdit('${r.id}')">詳細</button></td>
+      <td style="text-align:center"><span class="badge ${bc}">${bl}</span></td>
+      <td style="text-align:center"><button class="${r.delivered?'chk done':'chk'}" onclick="toggleDelivered('${r.id}')">${r.delivered?'✓':''}</button></td>
+      <td style="text-align:center"><button class="btn-row" onclick="openEdit('${r.id}')">詳細</button></td>
     </tr>`;
   }).join('');
 
