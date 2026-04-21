@@ -153,7 +153,6 @@ th .sort-icon::after { content: '⇅'; }
 .drag-handle:active { cursor: grabbing; }
 .settings-item input.name-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; background: var(--bg); color: var(--text); font-family: var(--font); outline: none; }
 .settings-item input.name-input:focus { border-color: var(--accent); }
-.color-swatch { width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border2); cursor: pointer; padding: 0; flex-shrink: 0; }
 .btn-icon { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: transparent; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; }
 .btn-icon.del { border-color: var(--danger-bg); background: var(--danger-bg); color: var(--danger-text); }
 .btn-add-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px dashed var(--border2); border-radius: var(--radius); background: transparent; font-size: 13px; color: var(--text3); cursor: pointer; font-family: var(--font); width: 100%; margin-top: 4px; }
@@ -353,23 +352,26 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const SETTINGS_KEY = 'dental_settings_v2';
-// 各項目は {name, color} オブジェクト。colorはhex文字列
-let labs  = [{name:'和田精密',color:'#4A90D9'},{name:'PMラボ',color:'#7B68EE'},{name:'YUWA',color:'#50C878'},{name:'愛歯',color:'#FF8C69'}];
-let types = [{name:'Br（ブリッジ）',color:'#4A90D9'},{name:'Cr（クラウン）',color:'#9B59B6'},{name:'FD（総義歯）',color:'#E67E22'},{name:'PD（部分義歯）',color:'#E74C3C'},{name:'Tec（テック）',color:'#27AE60'},{name:'Inlay',color:'#16A085'},{name:'ジルコニア',color:'#2980B9'},{name:'セラミック',color:'#8E44AD'},{name:'その他',color:'#95A5A6'}];
-let doctors = [{name:'',color:'#4A90D9'}];
-let das     = [{name:'',color:'#50C878'}];
+// ① labは色なし、② typesのデフォルト色は空
+let labs  = [{name:'和田精密'},{name:'PMラボ'},{name:'YUWA'},{name:'愛歯'}];
+let types = [{name:'Br（ブリッジ）',color:''},{name:'Cr（クラウン）',color:''},{name:'FD（総義歯）',color:''},{name:'PD（部分義歯）',color:''},{name:'Tec（テック）',color:''},{name:'Inlay',color:''},{name:'ジルコニア',color:''},{name:'セラミック',color:''},{name:'その他',color:''}];
+let doctors = [{name:''}];
+let das     = [{name:''}];
+
+// ③ 5色プリセット（空=色なし を含む）
+const COLOR_PRESETS = ['', '#E74C3C', '#E67E22', '#2980B9', '#27AE60', '#8E44AD'];
+const COLOR_LABELS  = ['なし', '赤', '橙', '青', '緑', '紫'];
 
 function loadSettings() {
   try {
     const s = localStorage.getItem(SETTINGS_KEY);
     if(s) {
       const p = JSON.parse(s);
-      // 旧形式(string配列)との互換性
-      const toObj = (arr, defColor) => arr.map(x => typeof x==='string' ? {name:x,color:defColor} : x);
-      if(p.labs)    labs    = toObj(p.labs,    '#4A90D9');
-      if(p.types)   types   = toObj(p.types,   '#4A90D9');
-      if(p.doctors) doctors = toObj(p.doctors, '#4A90D9');
-      if(p.das)     das     = toObj(p.das,     '#50C878');
+      const toObj = (arr) => arr.map(x => typeof x==='string' ? {name:x,color:''} : {name:x.name||'',color:x.color||''});
+      if(p.labs)    labs    = toObj(p.labs);
+      if(p.types)   types   = toObj(p.types);
+      if(p.doctors) doctors = toObj(p.doctors);
+      if(p.das)     das     = toObj(p.das);
     }
   } catch(e){}
 }
@@ -781,19 +783,33 @@ function renderAllSettingLists(){
 }
 
 function renderSettingList(containerId, arr, prefix){
-  const showColor = (prefix==='lab' || prefix==='type'); // ① Dr/DAは色不要
+  const showColor = (prefix==='type'); // ① labは色なし、Dr/DAも色なし
   const el = document.getElementById(containerId); if(!el) return;
-  el.innerHTML = arr.map((item,i) => `
+  el.innerHTML = arr.map((item,i) => {
+    const colorBtns = showColor ? `
+      <div style="display:flex;gap:3px;align-items:center;flex-shrink:0">
+        ${COLOR_PRESETS.map((c,ci) => {
+          const active = (item.color||'') === c;
+          const bg = c || '#E8E6DF';
+          const border = active ? '#333' : 'transparent';
+          const label = COLOR_LABELS[ci];
+          return `<button title="${label}" onclick="updateEditItem('${prefix}',${i},'color','${c}');renderSettingList('${prefix}-list',getEditArr('${prefix}'),'${prefix}')"
+            style="width:22px;height:22px;border-radius:50%;background:${bg};border:2px solid ${border};cursor:pointer;flex-shrink:0;padding:0"
+          ></button>`;
+        }).join('')}
+      </div>` : '';
+    return `
     <div class="settings-item" draggable="true" data-index="${i}" data-prefix="${prefix}"
          ondragstart="onDragStart(event)" ondragover="onDragOver(event)"
          ondrop="onDrop(event)" ondragend="onDragEnd(event)"
          ontouchstart="onTouchStart(event)" ontouchmove="onTouchMove(event)" ontouchend="onTouchEnd(event)">
       <span class="drag-handle" title="ドラッグして並び替え">⋮⋮</span>
-      ${showColor ? `<input type="color" class="color-swatch" value="${item.color||'#4A90D9'}" oninput="updateEditItem('${prefix}',${i},'color',this.value)">` : ''}
+      ${colorBtns}
       <input type="text" class="name-input" value="${item.name||''}" placeholder="名前を入力"
              oninput="updateEditItem('${prefix}',${i},'name',this.value)">
       <button class="btn-icon del" onclick="removeEditItem('${prefix}',${i})">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function getEditArr(prefix){
@@ -806,10 +822,10 @@ function removeEditItem(prefix,i){
   getEditArr(prefix).splice(i,1);
   renderSettingList(prefix+'-list', getEditArr(prefix), prefix);
 }
-function addLabItem()   { _editingLabs.push({name:'',color:'#4A90D9'});    renderSettingList('lab-list',    _editingLabs,    'lab'); }
-function addTypeItem()  { _editingTypes.push({name:'',color:'#4A90D9'});   renderSettingList('type-list',   _editingTypes,   'type'); }
-function addDoctorItem(){ _editingDoctors.push({name:'',color:'#4A90D9'}); renderSettingList('doctor-list', _editingDoctors, 'doctor'); }
-function addDAItem()    { _editingDas.push({name:'',color:'#50C878'});     renderSettingList('da-list',     _editingDas,     'da'); }
+function addLabItem()   { _editingLabs.push({name:''});             renderSettingList('lab-list',    _editingLabs,    'lab'); }
+function addTypeItem()  { _editingTypes.push({name:'',color:''});   renderSettingList('type-list',   _editingTypes,   'type'); }
+function addDoctorItem(){ _editingDoctors.push({name:''});          renderSettingList('doctor-list', _editingDoctors, 'doctor'); }
+function addDAItem()    { _editingDas.push({name:''});              renderSettingList('da-list',     _editingDas,     'da'); }
 
 function saveSettings(){
   labs    = _editingLabs.filter(x=>x.name.trim());
