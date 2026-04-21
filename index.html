@@ -355,28 +355,40 @@ const SETTINGS_KEY = 'dental_settings_v2';
 // ① labは色なし、② typesのデフォルト色は空
 let labs  = [{name:'和田精密'},{name:'PMラボ'},{name:'YUWA'},{name:'愛歯'}];
 let types = [{name:'Br（ブリッジ）',color:''},{name:'Cr（クラウン）',color:''},{name:'FD（総義歯）',color:''},{name:'PD（部分義歯）',color:''},{name:'Tec（テック）',color:''},{name:'Inlay',color:''},{name:'ジルコニア',color:''},{name:'セラミック',color:''},{name:'その他',color:''}];
-let doctors = [{name:''}];
-let das     = [{name:''}];
+let doctors = [];
+let das     = [];
 
 // ③ 5色プリセット（空=色なし を含む）
 const COLOR_PRESETS = ['', '#E74C3C', '#E67E22', '#2980B9', '#27AE60', '#8E44AD'];
 const COLOR_LABELS  = ['なし', '赤', '橙', '青', '緑', '紫'];
 
-function loadSettings() {
+// ② 設定をSupabaseに保存・読み込み
+async function loadSettings() {
   try {
-    const s = localStorage.getItem(SETTINGS_KEY);
-    if(s) {
-      const p = JSON.parse(s);
-      const toObj = (arr) => arr.map(x => typeof x==='string' ? {name:x,color:''} : {name:x.name||'',color:x.color||''});
-      if(p.labs)    labs    = toObj(p.labs);
-      if(p.types)   types   = toObj(p.types);
-      if(p.doctors) doctors = toObj(p.doctors);
-      if(p.das)     das     = toObj(p.das);
-    }
+    const {data,error} = await sb.from('settings').select('*');
+    if(error || !data) return;
+    const toObj = (arr) => arr.map(x => typeof x==='string' ? {name:x,color:''} : {name:x.name||'',color:x.color||''});
+    data.forEach(row => {
+      try {
+        const val = JSON.parse(row.value);
+        if(row.key==='labs')    labs    = toObj(val);
+        if(row.key==='types')   types   = toObj(val);
+        if(row.key==='doctors') doctors = toObj(val);
+        if(row.key==='das')     das     = toObj(val);
+      } catch(e){}
+    });
   } catch(e){}
 }
-function saveSettingsLocal() {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({labs,types,doctors,das})); } catch(e){}
+async function saveSettingsToSupabase() {
+  const entries = [
+    {key:'labs',    value:JSON.stringify(labs)},
+    {key:'types',   value:JSON.stringify(types)},
+    {key:'doctors', value:JSON.stringify(doctors)},
+    {key:'das',     value:JSON.stringify(das)},
+  ];
+  for(const e of entries) {
+    await sb.from('settings').upsert(e, {onConflict:'key'});
+  }
 }
 
 let records=[], currentTab='all', editId=null, selTeeth=[];
@@ -533,7 +545,12 @@ function getSelectedTypes(containerId) {
 // ③ Dr/DAチップ（1択）
 function buildPersonChips(containerId, arr, selectedVal) {
   const el = document.getElementById(containerId); if(!el) return;
-  el.innerHTML = arr.map(p => {
+  const validArr = arr.filter(p => p.name && p.name.trim());
+  if(!validArr.length) {
+    el.innerHTML = `<span style="font-size:12px;color:var(--text3)">設定から追加してください</span>`;
+    return;
+  }
+  el.innerHTML = validArr.map(p => {
     const sel = p.name === selectedVal;
     return `<div class="type-chip${sel?' sel':''}" data-name="${p.name}" onclick="togglePersonChip(this,'${containerId}')">${p.name}</div>`;
   }).join('');
@@ -549,6 +566,7 @@ function getSelectedPerson(containerId) {
 }
 async function load() {
   setSyncState('syncing');
+  await loadSettings();
   const {data,error}=await sb.from('records').select('*').order('created_at',{ascending:false});
   if(error){setSyncState('error');return;}
   records=data||[];
@@ -813,7 +831,7 @@ function renderSettingList(containerId, arr, prefix){
       ${colorPicker}
       <input type="text" class="name-input" value="${item.name||''}" placeholder="名前を入力"
              oninput="updateEditItem('${prefix}',${i},'name',this.value)"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();addSettingItem('${prefix}');}">
+             onkeydown="if(event.key==='Enter'){event.preventDefault();insertSettingItemAfter('${prefix}',${i});}">
       <button class="btn-icon del" onclick="removeEditItem('${prefix}',${i})">✕</button>
     </div>`;
   }).join('');
@@ -853,17 +871,33 @@ function addSettingItem(prefix){
   const map = {lab:addLabItem, type:addTypeItem, doctor:addDoctorItem, da:addDAItem};
   if(map[prefix]) map[prefix]();
 }
+
+// ① Enterで直下に挿入
+function insertSettingItemAfter(prefix, i) {
+  const arr = getEditArr(prefix);
+  const newItem = prefix==='type' ? {name:'',color:''} : {name:''};
+  arr.splice(i+1, 0, newItem);
+  const containerId = prefix+'-list';
+  renderSettingList(containerId, arr, prefix);
+  // 挿入した項目(i+1番目)にフォーカス
+  const inputs = document.querySelectorAll(`#${containerId} .name-input`);
+  if(inputs[i+1]) inputs[i+1].focus();
+}
+
 function focusLastInput(containerId){
   const inputs = document.querySelectorAll(`#${containerId} .name-input`);
   if(inputs.length) inputs[inputs.length-1].focus();
 }
 
-function saveSettings(){
+async function saveSettings(){
   labs    = _editingLabs.filter(x=>x.name.trim());
   types   = _editingTypes.filter(x=>x.name.trim());
   doctors = _editingDoctors.filter(x=>x.name.trim());
   das     = _editingDas.filter(x=>x.name.trim());
-  saveSettingsLocal(); initFilters(); closeSettings();
+  setSyncState('syncing');
+  await saveSettingsToSupabase();
+  setSyncState('ok');
+  initFilters(); closeSettings();
 }
 
 // Drag-and-drop (desktop)
@@ -935,7 +969,7 @@ function onTouchEnd(e){
   document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById(id).classList.remove('open');});
 });
 
-loadSettings(); load();
+load();
 </script>
 </body>
 </html>
