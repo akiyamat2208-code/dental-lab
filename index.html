@@ -70,12 +70,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; min-width: 1000px; table-layout: fixed; }
-th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; overflow: hidden; }
-td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; }
+th { text-align: center; padding: 10px 8px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; overflow: hidden; }
+td { padding: 11px 8px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; text-align: center; }
 /* ② 列幅指定 */
 th:nth-child(1), td:nth-child(1) { width: 50px; }   /* 日付 */
 th:nth-child(2), td:nth-child(2) { width: 60px; }   /* 患者番号 */
-th:nth-child(3), td:nth-child(3) { width: 110px; }  /* 患者名 */
+th:nth-child(3), td:nth-child(3) { width: 110px; text-align: left; }  /* 患者名 */
 th:nth-child(4), td:nth-child(4) { width: 70px; }   /* 歯式 */
 th:nth-child(5), td:nth-child(5) { width: 160px; overflow: visible; white-space: normal; word-break: break-word; }  /* 技工物 */
 th:nth-child(6), td:nth-child(6) { width: 70px; }   /* 技工所 */
