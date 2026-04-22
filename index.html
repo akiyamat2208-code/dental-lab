@@ -54,10 +54,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .alert-info { background: var(--info-bg); color: var(--info-text); }
 .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
-.stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.stat-label { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 4px; }
+.stat-label.urgent { color: #C0392B; }
+.stat-label.warn { color: #E67E22; }
 .stat-val { font-size: 26px; font-weight: 600; font-family: var(--mono); }
-.stat-val.danger { color: var(--danger); }
-.stat-val.warn { color: var(--warn); }
+.stat-val.danger { color: #C0392B; }
+.stat-val.warn { color: #E67E22; }
 .controls { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 12px; }
 .tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
@@ -230,8 +232,8 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
     <div class="stats">
       <div class="stat"><div class="stat-label">全件数</div><div class="stat-val" id="s-all">—</div></div>
       <div class="stat"><div class="stat-label">未納品</div><div class="stat-val" id="s-pending">—</div></div>
-      <div class="stat"><div class="stat-label">前日／当日未納品</div><div class="stat-val warn" id="s-today">—</div></div>
-      <div class="stat"><div class="stat-label">遅延</div><div class="stat-val danger" id="s-overdue">—</div></div>
+      <div class="stat"><div class="stat-label urgent">遅延</div><div class="stat-val danger" id="s-overdue">—</div></div>
+      <div class="stat"><div class="stat-label warn">前日／当日未納品</div><div class="stat-val warn" id="s-today">—</div></div>
     </div>
     <div class="controls">
       <div class="tabs">
