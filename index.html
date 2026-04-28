@@ -10,17 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="技工管理">
 <title>技工物 納品管理</title>
-<script>
-// キャッシュ自動更新（手動変更不要・アップロードのたびに自動更新）
-const APP_VERSION = '__BUILDTIME__';
-const stored = localStorage.getItem('app_version');
-if(stored && stored !== APP_VERSION) {
-  localStorage.setItem('app_version', APP_VERSION);
-  location.href = location.href.split('?')[0] + '?v=' + APP_VERSION;
-} else {
-  localStorage.setItem('app_version', APP_VERSION);
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -381,8 +371,6 @@ tr:not(.row-upcoming):not(.row-overdue):hover td { background: var(--bg); }
     <div class="modal-body" id="log-body" style="padding:0"></div>
   </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script>
 const SUPABASE_URL = 'https://hqiieomajoqbihflvlmj.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_GKxQLofKS3-VlsvLNbHTLw_ObnHRqck';
