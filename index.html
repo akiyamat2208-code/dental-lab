@@ -74,9 +74,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 table { width: 100%; border-collapse: collapse; min-width: 1000px; table-layout: fixed; }
 th { text-align: center; padding: 10px 8px; font-size: 11px; font-weight: 500; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; overflow: hidden; }
 td { padding: 11px 8px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; font-size: 13px; overflow: hidden; text-align: left; }
-th:nth-child(1), td:nth-child(1) { width: 50px; text-align: center; }   /* 日付 */
-th:nth-child(2), td:nth-child(2) { width: 60px; text-align: center; }   /* 患者番号 */
-th:nth-child(3), td:nth-child(3) { width: 110px; text-align: left; }    /* 患者名 */
+th:nth-child(1), td:nth-child(1) { width: 50px; text-align: center; position: sticky; left: 0; z-index: 2; background: inherit; }
+th:nth-child(1) { background: var(--surface2); z-index: 3; }
+th:nth-child(2), td:nth-child(2) { width: 60px; text-align: center; position: sticky; left: 50px; z-index: 2; background: inherit; }
+th:nth-child(2) { background: var(--surface2); z-index: 3; }
+th:nth-child(3), td:nth-child(3) { width: 110px; text-align: left; position: sticky; left: 110px; z-index: 2; background: inherit; box-shadow: 2px 0 4px rgba(0,0,0,0.06); }
+th:nth-child(3) { background: var(--surface2); z-index: 3; }
 th:nth-child(4), td:nth-child(4) { width: 70px; text-align: left; }     /* 歯式 */
 th:nth-child(5), td:nth-child(5) { width: 160px; overflow: visible; white-space: normal; word-break: break-word; text-align: left; }  /* 技工物 */
 th:nth-child(6), td:nth-child(6) { width: 70px; text-align: center; }   /* 技工所 */
@@ -201,6 +204,8 @@ tr.row-upcoming td { background: #FFFBEB !important; }
 tr.row-overdue td { background: #FEF2F2 !important; }
 tr.row-upcoming:hover td { background: #FEF3C7 !important; }
 tr.row-overdue:hover td { background: #FEE2E2 !important; }
+tr:not(.row-upcoming):not(.row-overdue) td { background: var(--surface); }
+tr:not(.row-upcoming):not(.row-overdue):hover td { background: var(--bg); }
 .sync-dot.syncing { background: var(--warn); animation: pulse 1s infinite; }
 .sync-dot.error { background: var(--danger); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -260,7 +265,7 @@ tr.row-overdue:hover td { background: #FEE2E2 !important; }
             <th class="sortable" id="th-appt" onclick="toggleSort('appt')">予約日<span class="sort-icon"></span></th>
             <th class="sortable" id="th-eta" onclick="toggleSort('eta')">納品予定<span class="sort-icon"></span></th>
             <th>担当Dr</th><th>担当DA</th>
-            <th>状態</th><th>納品</th><th></th>
+            <th class="sortable" id="th-status" onclick="toggleSort('status')">状態<span class="sort-icon"></span></th><th>納品</th><th></th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -451,8 +456,7 @@ function toggleSort(key) {
   if(sortKey===key) sortDir = sortDir==='asc' ? 'desc' : 'asc';
   else { sortKey=key; sortDir='asc'; }
   currentPage=1;
-  // Update header classes
-  ['date','appt','eta'].forEach(k=>{
+  ['date','appt','eta','status'].forEach(k=>{
     const th=document.getElementById('th-'+k);
     if(!th) return;
     th.className='sortable'+(sortKey===k ? ' sort-'+sortDir : '');
@@ -554,11 +558,10 @@ function daysDiff(a,b) { return Math.round((new Date(a)-new Date(b))/86400000); 
 function getStatus(r) {
   const t=today();
   if(r.delivered) return 'done';
-  // ② 遅延: 予約日が過去で未納品、またはeta超過
+  // ③ 前日／当日未納品を遅延より優先
+  if(!r.delivered && r.appt && (r.appt === t || daysDiff(r.appt, t) === 1)) return 'upcoming';
   if(!r.delivered && r.appt && r.appt < t) return 'overdue';
   if(!r.delivered && r.eta && r.eta < t) return 'overdue';
-  // ③ 前日／当日未納品: 予約日が今日または明日
-  if(!r.delivered && r.appt && (r.appt === t || daysDiff(r.appt, t) === 1)) return 'upcoming';
   return 'pending';
 }
 function setSyncState(s) {
@@ -677,7 +680,14 @@ function render() {
     if(ftype&&!r.type?.includes(ftype)) return false;
     return true;
   });
+  // ④ 状態ソート：状態優先度→予約日の順
+  const STATUS_ORDER = {overdue:0, upcoming:1, pending:2, done:3};
   filtered.sort((a,b)=>{
+    if(sortKey==='status') {
+      const sa=STATUS_ORDER[getStatus(a)]??9, sb=STATUS_ORDER[getStatus(b)]??9;
+      if(sa!==sb) return sortDir==='asc' ? sa-sb : sb-sa;
+      return (a.appt||'') > (b.appt||'') ? 1 : -1; // 同じ状態内は予約日昇順
+    }
     const va=a[sortKey]||'', vb=b[sortKey]||'';
     return sortDir==='asc' ? (va>vb?1:-1) : (va<vb?1:-1);
   });
@@ -775,6 +785,10 @@ async function saveNew(){
   const patno=document.getElementById('f-patno').value.trim();
   if(!name){alert('患者名を入力してください');return;}
   if(!patno){alert('患者番号を入力してください');return;}
+  const doctor=getSelectedPerson('f-doctor-list');
+  const da=getSelectedPerson('f-da-list');
+  if(!doctor){alert('担当Drを選択してください');return;}
+  if(!da){alert('担当DAを選択してください');return;}
   const selectedTypes=getSelectedTypes('f-type-list');
   const rec={
     date:document.getElementById('f-date').value,
@@ -784,8 +798,7 @@ async function saveNew(){
     teeth:teethToStr(selTeeth),
     appt:document.getElementById('f-appt').value,
     eta:document.getElementById('f-eta').value,
-    doctor:getSelectedPerson('f-doctor-list'),
-    da:getSelectedPerson('f-da-list'),
+    doctor, da,
     note:document.getElementById('f-note').value.trim(),
     delivered:''
   };
