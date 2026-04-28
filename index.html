@@ -47,8 +47,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .btn-settings { background: transparent; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-size: 13px; font-family: var(--font); color: var(--text2); cursor: pointer; }
 .main { flex: 1; padding: 16px; max-width: 1400px; margin: 0 auto; width: 100%; }
 .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; display: flex; align-items: flex-start; gap: 10px; }
-.alert-icon { font-size: 15px; flex-shrink: 0; }
+.alert { padding: 12px 16px; border-radius: var(--radius); font-size: 14px; font-weight: 500; display: flex; align-items: flex-start; gap: 10px; }
+.alert-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
 .alert-danger { background: var(--danger-bg); color: var(--danger-text); }
 .alert-warn { background: var(--warn-bg); color: var(--warn-text); }
 .alert-info { background: var(--info-bg); color: var(--info-text); }
@@ -104,8 +104,8 @@ th .sort-icon::after { content: '⇅'; }
 .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
 .badge-pending { background: var(--surface2); color: var(--text2); }
 .badge-done { background: var(--accent-bg); color: var(--accent-text); }
-.badge-overdue { background: var(--danger-bg); color: var(--danger-text); }
-.badge-today { background: var(--warn-bg); color: var(--warn-text); }
+.badge-overdue { background: #FFF3E8; color: #E67E22; border: 1px solid #E67E22; }
+.badge-today { background: #FEF2F2; color: #C0392B; border: 1px solid #C0392B; }
 .badge-soon { background: var(--info-bg); color: var(--info-text); }
 .chk { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border2); background: transparent; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; color: var(--text3); transition: all 0.15s; }
 .chk.done { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -200,10 +200,11 @@ th .sort-icon::after { content: '⇅'; }
 .type-chip.sel { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .type-chip.sel::before { content: '✓ '; font-size: 11px; }
 .type-chip:active { opacity: 0.7; }
-tr.row-upcoming td { background: #FFFBEB !important; }
-tr.row-overdue td { background: #FEF2F2 !important; }
-tr.row-upcoming:hover td { background: #FEF3C7 !important; }
-tr.row-overdue:hover td { background: #FEE2E2 !important; }
+/* 遅延=オレンジ、前日当日未納品=赤 で統一 */
+tr.row-overdue td { background: #FFF3E8 !important; }
+tr.row-overdue:hover td { background: #FFE8CC !important; }
+tr.row-upcoming td { background: #FEF2F2 !important; }
+tr.row-upcoming:hover td { background: #FEE2E2 !important; }
 tr:not(.row-upcoming):not(.row-overdue) td { background: var(--surface); }
 tr:not(.row-upcoming):not(.row-overdue):hover td { background: var(--bg); }
 .sync-dot.syncing { background: var(--warn); animation: pulse 1s infinite; }
@@ -450,7 +451,7 @@ let records=[], currentTab='all', editId=null, selTeeth=[];
 const PAGE_SIZE = 30;
 let currentPage = 1;
 let toothMode = 'permanent';
-let sortKey = 'appt', sortDir = 'asc'; // default sort
+let sortKey = 'status', sortDir = 'asc';
 
 function toggleSort(key) {
   if(sortKey===key) sortDir = sortDir==='asc' ? 'desc' : 'asc';
@@ -666,8 +667,8 @@ function render() {
   const oc=document.getElementById('overdue-count');
   if(overdue.length){oc.style.display='';oc.textContent=overdue.length;}else{oc.style.display='none';}
   let html='';
-  if(overdue.length) html+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span>未納品・遅延: ${overdue.map(r=>r.name+'（'+r.lab+'）').join('、')}</div>`;
-  if(upcomingRecs.length) html+=`<div class="alert alert-warn"><span class="alert-icon">📅</span>前日／当日未納品: ${upcomingRecs.map(r=>r.name+'（予約'+fmt(r.appt)+'）').join('、')}</div>`;
+  if(overdue.length) html+=`<div class="alert alert-warn"><span class="alert-icon">⚠️</span>未納品・遅延: ${overdue.map(r=>r.name+'（'+r.lab+'）').join('、')}</div>`;
+  if(upcomingRecs.length) html+=`<div class="alert alert-danger"><span class="alert-icon">🚨</span>前日／当日未納品: ${upcomingRecs.map(r=>r.name+'（予約'+fmt(r.appt)+'）').join('、')}</div>`;
   document.getElementById('alerts').innerHTML=html;
   let filtered=records.filter(r=>{
     const st=getStatus(r);
@@ -1104,7 +1105,9 @@ function onTouchEnd(e){
   document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById(id).classList.remove('open');});
 });
 
-load();
-</script>
+load().then(() => {
+  const th = document.getElementById('th-status');
+  if(th) th.className = 'sortable sort-asc';
+});
 </body>
 </html>
