@@ -412,9 +412,9 @@ async function loadSettings() {
         if(row.key==='types')   types   = toObj(val);
         if(row.key==='doctors') doctors = toObj(val);
         if(row.key==='das')     das     = toObj(val);
-      } catch(e){}
+      } catch(e){ console.warn('Settings parse error:', row.key, e); }
     });
-  } catch(e){}
+  } catch(e){ console.warn('loadSettings error:', e); }
 }
 async function saveSettingsToSupabase() {
   const entries = [
@@ -637,14 +637,24 @@ function getSelectedPerson(containerId) {
 }
 async function load() {
   setSyncState('syncing');
-  await loadSettings();
-  const {data,error}=await sb.from('records').select('*').order('created_at',{ascending:false});
-  if(error){setSyncState('error');return;}
-  records=data||[];
-  setSyncState('ok');
-  initFilters(); render();
-  document.getElementById('loading').style.display='none';
-  document.getElementById('table-area').style.display='block';
+  try {
+    await loadSettings();
+  } catch(e) {
+    console.warn('Settings load failed:', e);
+  }
+  try {
+    const {data,error}=await sb.from('records').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    records=data||[];
+    setSyncState('ok');
+    initFilters(); render();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('table-area').style.display='block';
+  } catch(e) {
+    console.error('Load failed:', e);
+    setSyncState('error');
+    document.getElementById('loading').innerHTML='<div style="color:var(--danger-text)">データの読み込みに失敗しました。ページを再読み込みしてください。</div>';
+  }
 }
 function initFilters() {
   const fl=document.getElementById('flab'),ft=document.getElementById('ftype');
@@ -1108,6 +1118,6 @@ function onTouchEnd(e){
 load().then(() => {
   const th = document.getElementById('th-status');
   if(th) th.className = 'sortable sort-asc';
-});
+}).catch(e => console.error(e));
 </body>
 </html>
