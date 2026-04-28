@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>接続テスト</title>
+</head>
+<body>
+<h2>Supabase 接続テスト</h2>
+<div id="result">テスト中...</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script>
+const URL = 'https://hqiieomajoqbihflvlmj.supabase.co';
+const KEY = 'sb_publishable_GKxQLofKS3-VlsvLNbHTLw_ObnHRqck';
+
+document.getElementById('result').textContent = 'Supabaseクライアント作成中...';
+
+try {
+  const sb = supabase.createClient(URL, KEY);
+  document.getElementById('result').textContent = 'クライアント作成OK。DB接続中...';
+
+  sb.from('records').select('count').then(({data, error}) => {
+    if(error) {
+      document.getElementById('result').innerHTML = '❌ DBエラー: ' + error.message + '<br>code: ' + error.code;
+    } else {
+      document.getElementById('result').innerHTML = '✅ 接続成功！';
+    }
+  });
+} catch(e) {
+  document.getElementById('result').textContent = '❌ 例外: ' + e.message;
+}
+</script>
+</body>
+</html>
